@@ -17,7 +17,7 @@ export class Viewport3D {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly controls: OrbitControls;
   private readonly content = new THREE.Group();
-  private readonly meshes = new Map<string, THREE.Mesh>();
+  private readonly meshes = new Map<string, THREE.Object3D>();
   private frame = 0;
   private readonly resizeObserver: ResizeObserver;
 
@@ -62,25 +62,35 @@ export class Viewport3D {
   };
 
   addPrimitive(node: Scene3DNode): void {
-    const geometry = this.geometry(node.kind);
-    if (!geometry) return;
-    const material = new THREE.MeshStandardMaterial({
-      color: node.color ?? '#6da7ff',
-      roughness: 0.72,
-      metalness: 0.04
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = node.name;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
     const p = node.position ?? {};
     const s = node.scale ?? {};
-    mesh.position.set(p.x ?? 0, p.y ?? 0.5, p.z ?? 0);
-    mesh.scale.set(s.x ?? 1, s.y ?? 1, s.z ?? 1);
-    mesh.userData.nodeId = node.id ?? crypto.randomUUID();
-    mesh.userData.kind = node.kind;
-    this.content.add(mesh);
-    this.meshes.set(String(mesh.userData.nodeId), mesh);
+    const color = node.color ?? '#6da7ff';
+    let object: THREE.Object3D;
+    if (node.kind === 'point-light') {
+      object = new THREE.PointLight(color, 18, 35);
+    } else if (node.kind === 'directional-light') {
+      object = new THREE.DirectionalLight(color, 2.5);
+    } else if (node.kind === 'camera') {
+      const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500);
+      camera.position.set(0, 3, 7);
+      object = camera;
+      this.content.add(new THREE.CameraHelper(camera));
+    } else {
+      const geometry = this.geometry(node.kind);
+      if (!geometry) return;
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      object = mesh;
+    }
+    object.name = node.name;
+    object.position.set(p.x ?? 0, p.y ?? 0.5, p.z ?? 0);
+    if (!(object instanceof THREE.Camera)) object.scale.set(s.x ?? 1, s.y ?? 1, s.z ?? 1);
+    object.userData.nodeId = node.id ?? crypto.randomUUID();
+    object.userData.kind = node.kind;
+    this.content.add(object);
+    this.meshes.set(String(object.userData.nodeId), object);
   }
 
   loadNodes(nodes: Scene3DNode[]): void {
@@ -100,19 +110,21 @@ export class Viewport3D {
         const material = child.material;
         if (Array.isArray(material)) material.forEach(item => item.dispose());
         else material.dispose();
+      } else if (child instanceof THREE.CameraHelper) {
+        child.dispose();
       }
     }
     this.meshes.clear();
   }
 
   listNodes(): Scene3DNode[] {
-    return [...this.meshes.values()].map(mesh => ({
-      id: String(mesh.userData.nodeId),
-      name: mesh.name,
-      kind: String(mesh.userData.kind),
-      position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
-      scale: { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z },
-      color: '#' + (mesh.material as THREE.MeshStandardMaterial).color.getHexString(),
+    return [...this.meshes.values()].map(object => ({
+      id: String(object.userData.nodeId),
+      name: object.name,
+      kind: String(object.userData.kind),
+      position: { x: object.position.x, y: object.position.y, z: object.position.z },
+      scale: { x: object.scale.x, y: object.scale.y, z: object.scale.z },
+      color: object instanceof THREE.Mesh ? '#' + (object.material as THREE.MeshStandardMaterial).color.getHexString() : '#ffffff',
       active: true
     }));
   }
