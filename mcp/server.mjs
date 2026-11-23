@@ -5,7 +5,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = path.resolve(process.env.LUQGAMEENGINE_PROJECT || DEFAULT_ROOT);
 const server = new Server(
   { name: 'luqgameengine-ai-studio', version: '0.3.0' },
   { capabilities: { tools: {} } }
