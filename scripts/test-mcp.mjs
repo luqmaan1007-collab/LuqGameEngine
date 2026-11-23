@@ -23,13 +23,15 @@ try {
   if (created.isError) throw new Error(JSON.stringify(created.content));
   const added = await client.callTool({ name: 'scene_add_object', arguments: { scene: sceneFile, name: 'CI Cube', kind: 'box', color: '#55aa88' } });
   if (added.isError) throw new Error(JSON.stringify(added.content));
-  const map = await client.callTool({ name: 'scene_generate_map', arguments: { name: 'ci-mcp-map', width: 2, depth: 2, seed: 7, tileSize: 2 } });
+  const map = await client.callTool({ name: 'scene_generate_map', arguments: { name: 'ci-mcp-map', width: 2, depth: 2, seed: 7, tileSize: 2, dimension: '3d' } });
   if (map.isError) throw new Error(JSON.stringify(map.content));
+  const map2d = await client.callTool({ name: 'scene_generate_map', arguments: { name: 'ci-mcp-map-2d', width: 3, depth: 2, seed: 7, tileSize: 16, dimension: '2d' } });
+  if (map2d.isError) throw new Error(JSON.stringify(map2d.content));
   const model = await client.callTool({ name: 'model_create', arguments: { name: 'ci-mcp-model', parts: [{ name: 'Body', shape: 'mesh', vertices: [0,0,0, 1,0,0, 0,1,0], indices: [0,1,2] }] } });
   if (model.isError) throw new Error(JSON.stringify(model.content));
   const script = await client.callTool({ name: 'script_create', arguments: { filename: 'ci-smoke', language: 'typescript', code: 'export const ciSmokeTest = true;\n' } });
   if (script.isError) throw new Error(JSON.stringify(script.content));
-  console.log('MCP smoke test passed: ' + tools.length + ' tools; scene, object, map, model and script creation verified.');
+  console.log('MCP smoke test passed: ' + tools.length + ' tools; scene, object, 2D/3D map, model and script creation verified.');
 } finally {
   await client.close();
 }
