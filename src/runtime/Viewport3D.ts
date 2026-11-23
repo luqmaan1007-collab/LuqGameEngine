@@ -19,6 +19,9 @@ export class Viewport3D {
   private readonly controls: OrbitControls;
   private readonly content = new THREE.Group();
   private readonly meshes = new Map<string, THREE.Object3D>();
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly pointer = new THREE.Vector2();
+  private selectionHandler?: (node?: Scene3DNode) => void;
   private frame = 0;
   private readonly resizeObserver: ResizeObserver;
 
@@ -31,6 +34,7 @@ export class Viewport3D {
     this.camera.position.set(8, 7, 10);
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
+    this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.controls.target.set(0, 0.8, 0);
     this.scene.add(new THREE.HemisphereLight(0xc9ddff, 0x263247, 2));
     const sun = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -62,7 +66,7 @@ export class Viewport3D {
     this.renderer.render(this.scene, this.camera);
   };
 
-  addPrimitive(node: Scene3DNode): void {
+  addPrimitive(node: Scene3DNode): string {
     const p = node.position ?? {};
     const s = node.scale ?? {};
     const color = node.color ?? '#6da7ff';
@@ -78,7 +82,7 @@ export class Viewport3D {
       this.content.add(new THREE.CameraHelper(camera));
     } else {
       const geometry = node.kind === 'mesh' && node.geometry ? this.customGeometry(node.geometry) : this.geometry(node.kind);
-      if (!geometry) return;
+      if (!geometry) return '';
       const material = new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = true;
@@ -88,10 +92,51 @@ export class Viewport3D {
     object.name = node.name;
     object.position.set(p.x ?? 0, p.y ?? 0.5, p.z ?? 0);
     if (!(object instanceof THREE.Camera)) object.scale.set(s.x ?? 1, s.y ?? 1, s.z ?? 1);
-    object.userData.nodeId = node.id ?? crypto.randomUUID();
+    const id = node.id ?? crypto.randomUUID();
+    object.userData.nodeId = id;
     object.userData.kind = node.kind;
     this.content.add(object);
-    this.meshes.set(String(object.userData.nodeId), object);
+    this.meshes.set(String(id), object);
+    return String(id);
+  }
+
+  onSelection(handler: (node?: Scene3DNode) => void): void { this.selectionHandler = handler; }
+
+  private handlePointerDown = (event: PointerEvent): void => {
+    if (event.button !== 0) return;
+    const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.raycaster.intersectObjects([...this.meshes.values()], true)[0]?.object;
+    let current: THREE.Object3D | null = hit ?? null;
+    while (current && current.userData.nodeId === undefined) current = current.parent;
+    const id = current?.userData.nodeId;
+    this.selectionHandler?.(id ? this.listNodes().find(node => node.id === String(id)) : undefined);
+  };
+
+  updateNode(id: string, patch: Partial<Scene3DNode>): void {
+    const object = this.meshes.get(id);
+    if (!object) return;
+    if (typeof patch.name === 'string') object.name = patch.name;
+    if (patch.position) object.position.set(patch.position.x ?? object.position.x, patch.position.y ?? object.position.y, patch.position.z ?? object.position.z);
+    if (patch.scale) object.scale.set(patch.scale.x ?? object.scale.x, patch.scale.y ?? object.scale.y, patch.scale.z ?? object.scale.z);
+    if (typeof patch.active === 'boolean') object.visible = patch.active;
+    if (patch.color && object instanceof THREE.Mesh) (object.material as THREE.MeshStandardMaterial).color.set(patch.color);
+    if (patch.color && object instanceof THREE.Light) object.color.set(patch.color);
+  }
+
+  removeNode(id: string): void {
+    const object = this.meshes.get(id);
+    if (!object) return;
+    this.content.remove(object);
+    if (object instanceof THREE.Mesh) {
+      object.geometry.dispose();
+      const material = object.material;
+      if (Array.isArray(material)) material.forEach(item => item.dispose());
+      else material.dispose();
+    }
+    this.meshes.delete(id);
   }
 
   loadNodes(nodes: Scene3DNode[]): void {
@@ -142,6 +187,7 @@ export class Viewport3D {
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this.resize);
     this.controls.dispose();
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.clear();
     this.renderer.dispose();
   }
