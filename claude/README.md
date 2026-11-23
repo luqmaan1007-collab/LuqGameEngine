@@ -19,7 +19,7 @@ Do not put API keys or passwords in the MCP configuration.
 - Create 2D and 3D scene documents.
 - Add primitive objects, lights, cameras and sprites to scenes.
 - Generate deterministic tile-based 3D terrain maps up to 48 × 48 tiles.
-- Create reusable procedural 3D model descriptors made from primitive meshes.
+- Create reusable procedural 3D model descriptors from primitives or custom vertex/index meshes.
 - Create scripts in Luau, TypeScript, JavaScript, Python, Rust, C#, and GLSL.
 
 Claude should describe proposed changes and request approval before broad edits or destructive changes. MCP writes are restricted to src/, roblox/src/, and ai-workspace/; it cannot write secrets, dependencies, or Git metadata.
@@ -28,4 +28,4 @@ Claude should describe proposed changes and request approval before broad edits 
 
 Claude-generated scenes use LuqGameScene/1; procedural models use LuqGameModel/1. Files are saved under ai-workspace/scenes/ and ai-workspace/models/. Import a generated scene or model JSON from the editor's Open action. The editor includes an interactive Three.js 3D viewport with orbit and zoom controls, plus the 2D canvas editor.
 
-The bridge creates structured model/scene data and code. It does not claim to generate a finished sculpted mesh or publish a game automatically. Claude can iterate on the source and structured geometry, then the project can be exported through the platform-specific build workflows.
+The bridge can create custom triangle meshes from vertex/index data as well as primitive assemblies. It does not include a sculpting UI or publish a game automatically. Claude can iterate on the source and structured geometry, then the project can be exported through the platform-specific build workflows.
