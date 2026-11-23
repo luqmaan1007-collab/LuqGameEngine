@@ -4,10 +4,11 @@ import { PluginManager } from '../plugins/PluginManager';
 import { Scene } from '../runtime/Scene';
 import { Entity } from '../runtime/Entity';
 import { Transform } from '../runtime/components/Transform';
+import { Visual, type VisualShape } from '../runtime/components/Visual';
 import { Engine } from '../runtime/Engine';
 import { Viewport3D, type Scene3DNode } from '../runtime/Viewport3D';
 
-type SavedEntity = { id?: string; name: string; active: boolean; transform?: {x:number;y:number;width:number;height:number} };
+type SavedEntity = { id?: string; name: string; active: boolean; transform?: {x:number;y:number;width:number;height:number}; visual?: { shape: VisualShape; color: string } };
 type SavedProject = { format: 'LuqGameProject/1'; scene: string; entities: SavedEntity[]; nodes3d?: Scene3DNode[] };
 
 const starterCode = 'local Players = game:GetService("Players")\n\nlocal function onPlayerAdded(player: Player)\n    print("Welcome, " .. player.Name)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\n';
@@ -184,6 +185,7 @@ export class Editor {
         const entity = new Entity(saved.name);
         entity.active = saved.active !== false;
         if (saved.transform) entity.add(new Transform(saved.transform.x, saved.transform.y, saved.transform.width, saved.transform.height));
+        if (saved.visual) entity.add(new Visual(saved.visual.shape, saved.visual.color));
         this.scene.add(entity);
       }
       this.scene.name = data.scene || 'Main Scene';
@@ -254,7 +256,8 @@ export class Editor {
   private snapshot(): SavedProject {
     return { format: 'LuqGameProject/1', scene: this.scene?.name ?? 'Main Scene', nodes3d: this.threeD?.listNodes() ?? [], entities: (this.scene?.entities ?? []).map(entity => {
       const t = entity.get<Transform>('Transform');
-      return { name: entity.name, active: entity.active, transform: t ? { x:t.x, y:t.y, width:t.width, height:t.height } : undefined };
+      const visual = entity.get<Visual>('Visual');
+      return { name: entity.name, active: entity.active, transform: t ? { x:t.x, y:t.y, width:t.width, height:t.height } : undefined, visual: visual ? { shape: visual.shape, color: visual.color } : undefined };
     }) };
   }
 
@@ -286,6 +289,7 @@ export class Editor {
             const position = node.position ?? {};
             const scale = node.scale ?? {};
             entity.add(new Transform(position.x ?? 0, position.y ?? 0, scale.x ?? 40, scale.y ?? 40));
+            entity.add(new Visual(node.kind === 'circle2d' ? 'circle' : node.kind === 'sprite' ? 'sprite' : 'rect', node.color ?? '#60a5fa'));
             this.scene.add(entity);
           }
           this.setMode('2d');
@@ -307,6 +311,7 @@ export class Editor {
         const entity = new Entity(saved.name);
         entity.active = saved.active !== false;
         if (saved.transform) entity.add(new Transform(saved.transform.x, saved.transform.y, saved.transform.width, saved.transform.height));
+        if (saved.visual) entity.add(new Visual(saved.visual.shape, saved.visual.color));
         this.scene.add(entity);
       }
       this.scene.name = data.scene || 'Main Scene';
