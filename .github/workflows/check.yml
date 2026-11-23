@@ -1,7 +1,7 @@
 name: TypeScript and project checks
 concurrency:
   group: luqgameengine-check-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 on:
   push:
     branches: [main]
