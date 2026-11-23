@@ -273,7 +273,7 @@ export class Editor {
 
   private async importProject(file: File): Promise<void> {
     try {
-      const data = JSON.parse(await file.text()) as SavedProject & { code?: string; dimension?: string; nodes?: Scene3DNode[]; parts?: Scene3DNode[] };
+      const data = JSON.parse(await file.text()) as { format: string; scene?: string; entities?: SavedEntity[]; nodes3d?: Scene3DNode[]; code?: string; dimension?: string; nodes?: Scene3DNode[]; parts?: Scene3DNode[] };
       if (!this.scene) throw new Error('Runtime is not ready');
       if (data.format === 'LuqGameScene/1' && Array.isArray(data.nodes)) {
         if (data.dimension === '3d') {
