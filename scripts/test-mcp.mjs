@@ -25,7 +25,7 @@ try {
   if (added.isError) throw new Error(JSON.stringify(added.content));
   const map = await client.callTool({ name: 'scene_generate_map', arguments: { name: 'ci-mcp-map', width: 2, depth: 2, seed: 7, tileSize: 2 } });
   if (map.isError) throw new Error(JSON.stringify(map.content));
-  const model = await client.callTool({ name: 'model_create', arguments: { name: 'ci-mcp-model', parts: [{ name: 'Body', shape: 'box' }] } });
+  const model = await client.callTool({ name: 'model_create', arguments: { name: 'ci-mcp-model', parts: [{ name: 'Body', shape: 'mesh', vertices: [0,0,0, 1,0,0, 0,1,0], indices: [0,1,2] }] } });
   if (model.isError) throw new Error(JSON.stringify(model.content));
   const script = await client.callTool({ name: 'script_create', arguments: { filename: 'ci-smoke', language: 'typescript', code: 'export const ciSmokeTest = true;\n' } });
   if (script.isError) throw new Error(JSON.stringify(script.content));
