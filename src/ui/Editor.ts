@@ -1,24 +1,42 @@
 import * as monaco from 'monaco-editor';
 import { languages } from '../languages/registry';
 import { PluginManager } from '../plugins/PluginManager';
+import { Scene } from '../runtime/Scene';
+import { Entity } from '../runtime/Entity';
+import { Transform } from '../runtime/components/Transform';
+import { Engine } from '../runtime/Engine';
+
+type SavedEntity = { id?: string; name: string; active: boolean; transform?: {x:number;y:number;width:number;height:number} };
+type SavedProject = { format: 'LuqGameProject/1'; scene: string; entities: SavedEntity[] };
+
+const starterCode = 'local Players = game:GetService("Players")\n\nlocal function onPlayerAdded(player: Player)\n    print("Welcome, " .. player.Name)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\n';
 
 export class Editor {
   readonly canvas: HTMLCanvasElement;
   private status!: HTMLElement;
   private editor?: monaco.editor.IStandaloneCodeEditor;
   private readonly plugins = new PluginManager();
+  private scene?: Scene;
+  private engine?: Engine;
+  private selected?: Entity;
+  private playing = false;
 
   constructor(private readonly root: HTMLElement) {
-    root.innerHTML = `
-      <div class="app-shell">
-        <header class="topbar"><div class="brand-mark">L</div><strong>LuqGameEngine</strong><span class="version">0.2 DEV</span><nav><button id="play">▶ Play</button><button id="plugin-upload">Import .elg</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><button id="export">Export</button></nav></header>
-        <div class="layout">
-          <aside class="sidebar"><div class="panel-title">PROJECT</div><div class="file active">▸ Main Scene</div><div class="file">▸ Scripts / main.server.luau</div><div class="file">▸ Roblox / default.project.json</div><div class="file">▸ Plugins / sample.elg</div><div class="panel-title">LANGUAGES</div><div class="language-list">${languages.map(l=>`<span>${l.label}</span>`).join('')}</div></aside>
-          <main class="center"><div class="tabs"><span class="tab selected">Game Preview</span><span class="tab">Script Editor</span></div><section class="preview"><canvas width="640" height="360"></canvas></section><section class="code-panel"><div class="code-toolbar"><span class="panel-title">CODE EDITOR</span><select id="language" aria-label="Programming language"></select></div><div id="code"></div></section></main>
-          <aside class="inspector"><div class="panel-title">INSPECTOR</div><h3>Player</h3><label>Position X<input value="110" type="number"></label><label>Position Y<input value="110" type="number"></label><label>Width<input value="48" type="number"></label><label>Height<input value="48" type="number"></label><div class="panel-title">EXPORT TARGETS</div><div class="target">Android APK</div><div class="target">Roblox .rbxl</div><div class="target">Windows .exe</div><div class="target">macOS .dmg</div></aside>
-        </div>
-        <footer><span>● Runtime ready</span><span id="status">Initializing…</span><span>Touch / mouse / keyboard</span></footer>
-      </div>`;
+    root.innerHTML = [
+      '<div class="app-shell">',
+      '<header class="topbar"><div class="brand"><div class="brand-mark">L</div><div><strong>LuqGameEngine</strong><small>GAME STUDIO <span>EARLY ACCESS</span></small></div></div>',
+      '<div class="top-actions"><button class="icon-btn" id="save" title="Save project">Save</button><button class="icon-btn" id="import-project">Open</button><button class="primary-btn" id="play">▶ Play</button><button class="icon-btn" id="export">Export</button><button class="icon-btn" id="plugin-upload">＋ Plugin</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><input id="project-file" type="file" accept=".json,.luq" hidden></div></header>',
+      '<div class="workspace">',
+      '<aside class="left-panel"><div class="panel-heading"><span>PROJECT</span><button id="new-object" class="mini-btn" title="Add object">＋</button></div><div class="project-name">My Game <span>LOCAL</span></div><div class="tree" id="hierarchy"></div>',
+      '<div class="panel-heading languages-heading"><span>LANGUAGES</span></div><div class="language-list">' + languages.map(l => '<span>' + l.label + '</span>').join('') + '</div></aside>',
+      '<main class="center-panel"><div class="document-tabs"><span class="doc-tab active">◈ Main Scene</span><span class="doc-tab">⌘ main.server.luau</span><span class="spacer"></span><span class="viewport-label">2D VIEWPORT</span></div>',
+      '<section class="preview-wrap"><div class="viewport-toolbar"><span>SCENE VIEW</span><span>640 × 360</span><button id="reset-view">Reset view</button></div><div class="preview"><canvas width="640" height="360" aria-label="Game scene preview"></canvas></div></section>',
+      '<section class="code-panel"><div class="code-toolbar"><div><span class="panel-heading-text">SCRIPT EDITOR</span><span class="file-path">/ Scripts / main.server.luau</span></div><select id="language" aria-label="Programming language"></select></div><div id="code"></div></section></main>',
+      '<aside class="right-panel"><div class="panel-heading"><span>INSPECTOR</span><span class="inspector-tag">OBJECT</span></div><div id="inspector-content" class="inspector-content"><div class="empty-inspector">Select an object in the hierarchy to edit its properties.</div></div>',
+      '<div class="panel-heading export-heading"><span>BUILD TARGETS</span></div><div class="build-list"><div><b>◉</b><span>Android APK</span><small>Capacitor</small></div><div><b>◈</b><span>Roblox place</span><small>.rbxl</small></div><div><b>▣</b><span>Windows app</span><small>.exe</small></div><div><b>▣</b><span>macOS app</span><small>.dmg</small></div></div><div class="build-note">Builds run in GitHub Actions. Open the repository Actions tab to download generated artifacts.</div></aside>',
+      '</div><footer><span><i class="status-dot"></i> <span id="runtime-state">Runtime ready</span></span><span id="status">Welcome to LuqGameEngine</span><span>Touch · Mouse · Keyboard</span></footer></div>'
+    ].join('');
+
     const canvas = root.querySelector('canvas');
     const status = root.querySelector<HTMLElement>('#status');
     const code = root.querySelector<HTMLElement>('#code');
@@ -37,11 +55,10 @@ export class Editor {
         monaco.languages.register({ id: language.monacoId });
       }
     }
-
     this.editor = monaco.editor.create(code, {
-      value: 'local Players = game:GetService("Players")\n\nlocal function onPlayerAdded(player: Player)\n    print("Welcome, " .. player.Name)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\n',
-      language: 'luau', theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false },
-      fontSize: 13, scrollBeyondLastLine: false, wordWrap: 'on'
+      value: starterCode, language: 'luau', theme: 'vs-dark', automaticLayout: true,
+      minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
+      wordWrap: 'on', padding: { top: 12 }, lineNumbersMinChars: 3
     });
     languageSelect.value = 'luau';
     languageSelect.addEventListener('change', () => {
@@ -49,7 +66,7 @@ export class Editor {
       if (!selected || !this.editor?.getModel()) return;
       const supported = monaco.languages.getLanguages().some(item => item.id === selected.monacoId);
       monaco.editor.setModelLanguage(this.editor.getModel()!, supported ? selected.monacoId : 'plaintext');
-      this.setStatus(supported ? `Editing ${selected.label}` : `${selected.label}: text editing enabled; add a language adapter/toolchain for diagnostics and execution`);
+      this.setStatus(supported ? 'Editing ' + selected.label : selected.label + ': text editing enabled; compiler adapter not installed');
     });
 
     root.querySelector('#plugin-upload')?.addEventListener('click', () => pluginInput.click());
@@ -58,15 +75,155 @@ export class Editor {
       if (!file) return;
       try {
         const plugin = await this.plugins.inspect(file);
-        this.setStatus(`Validated ELG plugin: ${plugin.name} v${plugin.version} · permissions: ${plugin.permissions.join(', ') || 'none'}`);
+        this.setStatus('Validated ' + plugin.name + ' v' + plugin.version + ' · permissions: ' + (plugin.permissions.join(', ') || 'none'));
       } catch (error) {
-        this.setStatus(error instanceof Error ? error.message : 'ELG plugin validation failed');
-      } finally {
-        pluginInput.value = '';
-      }
+        this.setStatus(error instanceof Error ? error.message : 'ELG validation failed');
+      } finally { pluginInput.value = ''; }
     });
-    root.querySelector('#play')?.addEventListener('click', () => this.setStatus('Preview running'));
-    root.querySelector('#export')?.addEventListener('click', () => this.setStatus('Use the build scripts for APK, RBXL, EXE and DMG exports'));
+    root.querySelector('#save')?.addEventListener('click', () => this.saveProject());
+    root.querySelector('#export')?.addEventListener('click', () => this.exportProject());
+    root.querySelector('#import-project')?.addEventListener('click', () => root.querySelector<HTMLInputElement>('#project-file')?.click());
+    root.querySelector<HTMLInputElement>('#project-file')?.addEventListener('change', event => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) void this.importProject(file);
+      (event.target as HTMLInputElement).value = '';
+    });
+    root.querySelector('#new-object')?.addEventListener('click', () => this.addObject());
+    root.querySelector('#play')?.addEventListener('click', () => this.togglePlay());
+    root.querySelector('#reset-view')?.addEventListener('click', () => this.setStatus('Viewport centered · 640 × 360'));
+    window.addEventListener('keydown', event => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); this.saveProject(); }
+      if (event.key === 'F5') { event.preventDefault(); this.togglePlay(); }
+    });
+  }
+
+  attachRuntime(scene: Scene, engine: Engine): void {
+    this.scene = scene;
+    this.engine = engine;
+    this.select(scene.entities[0]);
+    this.renderHierarchy();
+  }
+
+  private renderHierarchy(): void {
+    const tree = this.root.querySelector<HTMLElement>('#hierarchy');
+    if (!tree || !this.scene) return;
+    tree.innerHTML = '';
+    for (const entity of this.scene.entities) {
+      const item = document.createElement('button');
+      item.className = 'tree-item' + (entity === this.selected ? ' selected' : '');
+      item.innerHTML = '<span class="tree-caret">›</span><span class="object-icon">▧</span><span></span><span class="tree-visible">●</span>';
+      const label = item.querySelector('span:nth-child(3)');
+      if (label) label.textContent = entity.name;
+      item.addEventListener('click', () => this.select(entity));
+      tree.append(item);
+    }
+  }
+
+  private select(entity?: Entity): void {
+    this.selected = entity;
+    this.renderHierarchy();
+    const panel = this.root.querySelector<HTMLElement>('#inspector-content');
+    if (!panel) return;
+    if (!entity) { panel.innerHTML = '<div class="empty-inspector">Select an object to edit its properties.</div>'; return; }
+    const t = entity.get<Transform>('Transform') ?? new Transform();
+    panel.innerHTML = '<label class="property-label">NAME<input id="prop-name" value="' + this.escapeAttr(entity.name) + '"></label>' +
+      '<div class="property-section">TRANSFORM</div>' +
+      this.numberField('Position X', 'prop-x', t.x) + this.numberField('Position Y', 'prop-y', t.y) +
+      this.numberField('Width', 'prop-width', t.width) + this.numberField('Height', 'prop-height', t.height) +
+      '<label class="toggle-row"><span>Active in scene</span><input id="prop-active" type="checkbox" ' + (entity.active ? 'checked' : '') + '></label>' +
+      '<button class="danger-btn" id="delete-object">Delete object</button>';
+    panel.querySelector<HTMLInputElement>('#prop-name')?.addEventListener('input', e => {
+      entity.name = (e.target as HTMLInputElement).value || 'Object';
+      this.renderHierarchy();
+    });
+    const bind = (id: string, key: 'x'|'y'|'width'|'height') => panel.querySelector<HTMLInputElement>('#' + id)?.addEventListener('input', e => {
+      const value = Number((e.target as HTMLInputElement).value);
+      if (Number.isFinite(value)) t[key] = value;
+    });
+    bind('prop-x','x'); bind('prop-y','y'); bind('prop-width','width'); bind('prop-height','height');
+    panel.querySelector<HTMLInputElement>('#prop-active')?.addEventListener('change', e => { entity.active = (e.target as HTMLInputElement).checked; });
+    panel.querySelector('#delete-object')?.addEventListener('click', () => {
+      this.scene?.remove(entity.id);
+      this.select(this.scene?.entities[0]);
+      this.setStatus('Object deleted');
+    });
+  }
+
+  private numberField(label: string, id: string, value: number): string {
+    return '<label class="property-label">' + label + '<input id="' + id + '" type="number" step="1" value="' + value + '"></label>';
+  }
+  private escapeAttr(value: string): string { return value.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+  private addObject(): void {
+    if (!this.scene) return;
+    const entity = new Entity('Object ' + (this.scene.entities.length + 1));
+    entity.add(new Transform(80 + this.scene.entities.length * 18, 80 + this.scene.entities.length * 12, 40, 40));
+    this.scene.add(entity);
+    this.select(entity);
+    this.setStatus('Added ' + entity.name);
+  }
+
+  private snapshot(): SavedProject {
+    return { format: 'LuqGameProject/1', scene: this.scene?.name ?? 'Main Scene', entities: (this.scene?.entities ?? []).map(entity => {
+      const t = entity.get<Transform>('Transform');
+      return { name: entity.name, active: entity.active, transform: t ? { x:t.x, y:t.y, width:t.width, height:t.height } : undefined };
+    }) };
+  }
+
+  private saveProject(): void {
+    try {
+      localStorage.setItem('luqgameengine.project', JSON.stringify({ ...this.snapshot(), code: this.editor?.getValue() ?? '' }));
+      this.setStatus('Project saved on this device');
+    } catch { this.setStatus('Could not save project in local storage'); }
+  }
+
+  private exportProject(): void {
+    const payload = { ...this.snapshot(), code: this.editor?.getValue() ?? '' };
+    this.download(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), 'my-game.luq.json');
+    this.setStatus('Project exported as JSON');
+  }
+
+  private async importProject(file: File): Promise<void> {
+    try {
+      const data = JSON.parse(await file.text()) as SavedProject & { code?: string };
+      if (data.format !== 'LuqGameProject/1' || !Array.isArray(data.entities) || !this.scene) throw new Error('Unsupported project file');
+      this.scene.entities.splice(0);
+      for (const saved of data.entities) {
+        if (!saved || typeof saved.name !== 'string') continue;
+        const entity = new Entity(saved.name);
+        entity.active = saved.active !== false;
+        if (saved.transform) entity.add(new Transform(saved.transform.x, saved.transform.y, saved.transform.width, saved.transform.height));
+        this.scene.add(entity);
+      }
+      this.scene.name = data.scene || 'Main Scene';
+      if (typeof data.code === 'string') this.editor?.setValue(data.code);
+      this.select(this.scene.entities[0]);
+      this.setStatus('Project loaded: ' + file.name);
+    } catch (error) { this.setStatus(error instanceof Error ? error.message : 'Project import failed'); }
+  }
+
+  private download(blob: Blob, name: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = name; link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private togglePlay(): void {
+    if (!this.engine) return;
+    const button = this.root.querySelector<HTMLButtonElement>('#play');
+    const state = this.root.querySelector<HTMLElement>('#runtime-state');
+    if (this.playing) {
+      this.engine.stop(); this.playing = false;
+      if (button) { button.textContent = '▶ Play'; button.classList.add('primary-btn'); }
+      if (state) state.textContent = 'Runtime stopped';
+      this.setStatus('Preview stopped');
+    } else {
+      this.engine.start(); this.playing = true;
+      if (button) { button.textContent = '■ Stop'; button.classList.remove('primary-btn'); }
+      if (state) state.textContent = 'Preview running';
+      this.setStatus('Preview running · press F5 to stop');
+    }
   }
 
   setStatus(message: string): void { this.status.textContent = message; }
