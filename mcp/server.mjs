@@ -149,7 +149,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
         const name = String(args.name ?? '').trim();
         if (!name) throw new Error('Object name is required');
         const kind = String(args.kind ?? '');
-        const valid = ['box','sphere','cylinder','plane','sprite','rect2d','circle2d','point-light','directional-light','camera'];
+        const valid = ['box','sphere','cylinder','cone','torus','capsule','ring','plane','sprite','rect2d','circle2d','point-light','directional-light','camera'];
         if (!valid.includes(kind)) throw new Error('Unsupported scene object type');
         const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
         const node = { id: crypto.randomUUID(), name, kind, position: { x:n(args.x), y:n(args.y), z:n(args.z) }, scale: { x:n(args.scaleX ?? 1), y:n(args.scaleY ?? 1), z:n(args.scaleZ ?? 1) }, color: /^#[0-9a-fA-F]{6}$/.test(args.color ?? '') ? args.color : '#6da7ff', active: true };
@@ -185,7 +185,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       case 'model_create': {
         const name = String(args.name ?? '').trim();
         if (!name || !Array.isArray(args.parts) || args.parts.length < 1 || args.parts.length > 80) throw new Error('Model requires a name and 1–80 primitive parts');
-        const allowedShapes = new Set(['box','sphere','cylinder','plane','mesh']);
+        const allowedShapes = new Set(['box','sphere','cylinder','cone','torus','capsule','ring','plane','mesh']);
         const parts = args.parts.map((part, index) => {
           if (!part || !allowedShapes.has(part.shape) || typeof part.name !== 'string') throw new Error('Each model part needs a name and supported primitive shape');
           const num = value => Number.isFinite(Number(value)) ? Number(value) : 1;
