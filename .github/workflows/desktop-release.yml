@@ -33,6 +33,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install JavaScript dependencies
         run: npm install
+      - name: Generate platform icons
+        run: npx tauri icon src-tauri/icons/icon.svg --output src-tauri/icons
       - name: Build desktop package
         run: npm run tauri:build -- --bundles ${{ matrix.bundle }}
       - name: Upload desktop package
