@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "luqgameengine": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/LuqGameEngine/mcp/server.mjs"]
+    }
+  }
+}

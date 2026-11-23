@@ -1,0 +1,12 @@
+{
+  "format": "ELG/1",
+  "id": "org.luqgameengine.sample-tools",
+  "name": "Sample Tools",
+  "version": "1.0.0",
+  "description": "Example metadata-only LuqGameEngine plugin.",
+  "entrypoint": "plugin/index.js",
+  "permissions": ["project.read"],
+  "files": {
+    "plugin/index.js": "export function activate(api) { api.ui.notify('Sample plugin loaded'); }"
+  }
+}

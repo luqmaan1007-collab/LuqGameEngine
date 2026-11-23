@@ -1,0 +1,15 @@
+[package]
+name = "luqgameengine"
+version = "0.2.0"
+description = "LuqGameEngine desktop editor"
+authors = ["LuqGameEngine"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

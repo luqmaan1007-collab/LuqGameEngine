@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LuqGameEngine",
+  "version": "0.2.0",
+  "identifier": "com.luqmaan.luqgameengine",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{ "title": "LuqGameEngine", "width": 1440, "height": 900, "minWidth": 900, "minHeight": 600 }]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app","dmg","nsis"],
+    "category": "DeveloperTool"
+  }
+}

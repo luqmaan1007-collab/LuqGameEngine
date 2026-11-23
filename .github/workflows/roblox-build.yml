@@ -1,0 +1,20 @@
+name: Roblox RBXL build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['roblox/**','.github/workflows/roblox-build.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install rojo --locked
+      - run: npm run roblox:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luqgameengine-roblox-place
+          path: dist/roblox-game.rbxl
