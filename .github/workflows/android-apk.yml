@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['src/**','package.json','capacitor.config.ts','.github/workflows/android-apk.yml']
+    paths: ['src/**','package.json','package-lock.json','capacitor.config.ts','.github/workflows/android-apk.yml']
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -15,8 +15,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '21' }
+        with:
+          distribution: temurin
+          java-version: '21'
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -24,12 +27,14 @@ jobs:
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - run: npm install
+      - run: npm ci
       - run: npx cap add android
       - run: npm run build
       - run: npx cap sync android
-      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - name: Build debug APK
+        run: cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: luqgameengine-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
