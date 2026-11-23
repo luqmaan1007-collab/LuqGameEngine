@@ -1,59 +1,78 @@
 # LuqGameEngine
 
-A cross-platform game creation environment with an Android-first workflow, a 2D/3D-capable runtime architecture, Roblox/Luau project export, plugin packages, and MCP bridges for AI coding assistants.
+LuqGameEngine is an Android-first game creation workspace with a browser editor, scene preview, Luau/Roblox project pipeline, and desktop packaging targets.
 
-## Targets
-- **Android:** editor/runtime web app packaged as an APK through Capacitor.
-- **Roblox:** Luau source projects, Rojo build to `.rbxl`, optional publishing through Roblox Open Cloud.
-- **Windows:** Tauri desktop app installer / `.exe`.
-- **macOS:** Tauri desktop app / `.dmg`.
-- **Web:** browser editor and playable preview.
+## Editor features
 
-## Included in this repository baseline
-- TypeScript project and canvas game runtime with touch/pointer input.
-- Scene/entity/component model.
-- Monaco code editor and language registry, including Luau.
-- Roblox project template and Rojo build script.
-- Roblox Open Cloud publishing script (requires your own API key and Place ID; publish is an explicit action).
-- ELG plugin package manifest and permission validation.
-- MCP stdio server, Claude Desktop config example, and Claude Code plugin metadata.
-- Capacitor Android setup and Tauri desktop build configuration.
-- GitHub Actions workflows for Android APK and Windows/macOS releases.
+- Responsive editor layout designed for mobile and desktop.
+- Scene hierarchy with object selection and deletion.
+- 2D canvas viewport with direct touch/mouse drag positioning.
+- Inspector for object name, position, dimensions, and active state.
+- Play/stop preview controls and F5 shortcut.
+- Monaco script editor with Luau highlighting and a language selector.
+- Save project locally (Ctrl/Cmd+S), restore the saved project on next launch, import and export .luq.json project files.
+- ELG package manifest validation and permission checks.
 
-## Quick start
-```bash
+## Platform targets
+
+| Target | Build path | Output |
+|---|---|---|
+| Android | Capacitor + GitHub Actions | Debug APK |
+| Roblox | Rojo | .rbxl |
+| Windows | Tauri | .exe installer |
+| macOS | Tauri | .dmg |
+| Web | Vite | Browser app |
+
+## Run locally
+
+~~~bash
 npm install
 npm run dev
-```
+~~~
 
 ## Android APK
-```bash
+
+~~~bash
 npm run android:init
 npm run android:sync
 npm run android:apk
-```
-Requires Android SDK/NDK and JDK 17+.
+~~~
 
-## Roblox
-Install Rust and Cargo, then:
-```bash
+The Android workflow also runs from GitHub Actions and uploads the APK as a build artifact.
+
+## Roblox project
+
+Install Rust and Rojo, then run:
+
+~~~bash
 cargo install rojo --locked
 npm run roblox:build
-``
-Creates `dist/roblox-game.rbxl`. Roblox Studio is still useful for visual editing and final verification. Publishing requires an Open Cloud API key with place write permission and a Place ID:
-```bash
+~~~
+
+Creates dist/roblox-game.rbxl. Roblox Studio is recommended for final playtesting and inspection. Publishing requires a Roblox Open Cloud API key with place write permission and a Place ID:
+
+~~~bash
 ROBLOX_API_KEY=... ROBLOX_PLACE_ID=... npm run roblox:publish
-``
-The publish command deliberately requires `--publish` so an upload cannot happen accidentally.
+~~~
+
+The publish script requires an explicit publish flag to prevent accidental uploads.
+
+## Desktop packages
+
+The Tauri workflow builds a Windows installer and macOS disk image. Run it manually from the Actions tab when the workflow is enabled.
 
 ## Claude / MCP
-Run `npm run mcp` over stdio. Claude Desktop can connect using `claude/claude_desktop_config.example.json`; replace the example project path with the actual absolute path. Claude Code plugin metadata and MCP configuration are in `.claude-plugin/` and `.mcp.json`.
+
+Run npm run mcp over stdio. The example Claude Desktop configuration is in claude/claude_desktop_config.example.json. The current MCP server exposes read-only project inspection tools.
 
 ## ELG plugins
-An `.elg` file is a JSON plugin package containing a manifest, declared permissions and source payloads. This baseline validates and imports package metadata; it does **not** execute arbitrary plugin code. Runtime capabilities and sandboxed execution are planned.
+
+An .elg file uses the ELG/1 JSON manifest format. The current plugin manager validates metadata, entrypoint presence, and declared permissions. It does not execute plugin code; safe sandboxed plugin execution is still future work.
 
 ## Language support
-The editor uses Monaco for syntax editing across many languages and provides a Luau language definition. Actual compilation/runtime execution depends on installed language toolchains or a registered ELG adapter. This is extensible, not a promise that every language ships with a compiler.
 
-## Status
-Early foundation, not a finished engine. 3D renderer, physics, animation, scene serialization, asset pipeline, robust sandboxing, signing/notarization, and device testing remain milestones. APK/EXE/DMG/RBXL files are produced by their respective platform build pipelines; they are not committed binaries.
+The editor includes Monaco language modes and a custom Luau tokenizer. Language selection enables syntax editing where Monaco provides a language service. Running or compiling other languages requires their external toolchains/adapters.
+
+## Current limitations
+
+This is an actively developed engine foundation, not yet a full commercial-grade 3D engine. The current runtime is 2D Canvas-based. A 3D renderer, physics, animation, asset browser/import pipeline, scene serialization beyond the project JSON format, secure plugin sandbox, and on-device performance testing remain outstanding. Roblox, Android, Windows, and macOS outputs must be built and tested through their platform workflows before being considered release-ready.
