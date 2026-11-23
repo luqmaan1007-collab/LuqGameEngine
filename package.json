@@ -14,7 +14,8 @@
     "roblox:build": "mkdir -p dist && rojo build roblox/default.project.json -o dist/roblox-game.rbxl",
     "roblox:publish": "node scripts/publish-roblox.mjs --publish",
     "tauri": "tauri",
-    "tauri:build": "npm run build && tauri build"
+    "tauri:build": "npm run build && tauri build",
+    "test:mcp": "node scripts/test-mcp.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
