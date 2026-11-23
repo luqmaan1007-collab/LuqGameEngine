@@ -8,6 +8,7 @@ export type Scene3DNode = {
   position?: { x?: number; y?: number; z?: number };
   scale?: { x?: number; y?: number; z?: number };
   color?: string;
+  geometry?: { vertices: number[]; indices?: number[] };
   active?: boolean;
 };
 
@@ -76,7 +77,7 @@ export class Viewport3D {
       object = camera;
       this.content.add(new THREE.CameraHelper(camera));
     } else {
-      const geometry = this.geometry(node.kind);
+      const geometry = node.kind === 'mesh' && node.geometry ? this.customGeometry(node.geometry) : this.geometry(node.kind);
       if (!geometry) return;
       const material = new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 });
       const mesh = new THREE.Mesh(geometry, material);
@@ -136,6 +137,15 @@ export class Viewport3D {
     this.controls.dispose();
     this.clear();
     this.renderer.dispose();
+  }
+
+  private customGeometry(data: { vertices: number[]; indices?: number[] }): THREE.BufferGeometry | undefined {
+    if (!Array.isArray(data.vertices) || data.vertices.length < 9 || data.vertices.length % 3 !== 0 || data.vertices.length > 90000) return undefined;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(data.vertices, 3));
+    if (Array.isArray(data.indices) && data.indices.length >= 3 && data.indices.length <= 180000) geometry.setIndex(data.indices);
+    geometry.computeVertexNormals();
+    return geometry;
   }
 
   private geometry(kind: string): THREE.BufferGeometry | undefined {
