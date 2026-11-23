@@ -1,7 +1,7 @@
 name: Android APK
 concurrency:
   group: luqgameengine-android-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 on:
   workflow_dispatch:
   push:
