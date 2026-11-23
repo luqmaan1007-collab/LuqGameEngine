@@ -16,10 +16,7 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: android-actions/setup-android@v3
         with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+          packages: platform-tools,platforms;android-35,build-tools;35.0.0
       - run: npm install
       - run: npx cap add android
       - run: npm run build
