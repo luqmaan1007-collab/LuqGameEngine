@@ -1,5 +1,5 @@
 {
   "name": "luqgameengine",
-  "version": "0.2.0",
-  "description": "Claude MCP bridge for LuqGameEngine project information and Roblox workflow."
+  "version": "0.3.0",
+  "description": "AI game-development studio bridge: Claude can author code, create 2D and 3D scenes, generate terrain maps and procedural models, and organize project assets through permissioned MCP tools."
 }
