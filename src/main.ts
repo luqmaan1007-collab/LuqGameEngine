@@ -9,6 +9,7 @@ import { registerLuau } from './languages/luau';
 registerLuau();
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('Missing application root');
+
 const editor = new Editor(root);
 const scene = new Scene('Main Scene');
 const player = new Entity('Player');
@@ -17,7 +18,9 @@ scene.add(player);
 const floor = new Entity('Floor');
 floor.add(new Transform(0, 310, 640, 28));
 scene.add(floor);
+
 const engine = new Engine(editor.canvas);
 engine.setScene(scene);
+editor.attachRuntime(scene, engine);
 engine.start();
-editor.setStatus('Preview running · touch enabled');
+editor.setStatus('Ready · select an object or press Play to run the preview');
