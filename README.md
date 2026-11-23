@@ -1,67 +1,97 @@
 # LuqGameEngine
 
-LuqGameEngine is an Android-first game creation app with a browser editor and native desktop builds. It includes 2D and interactive 3D scene editing, a Luau/Roblox pipeline, and an MCP bridge that lets Claude author project code and scene/model assets.
+LuqGameEngine is an **Android-first game creation app** with a companion desktop editor for Windows and macOS. It combines 2D and 3D scene editing, scripting, Roblox project export, and an AI authoring bridge for Claude.
+
+## Apps
+
+- **Android:** Capacitor app; the primary mobile target.
+- **Windows:** Tauri desktop application packaged as an NSIS installer (.exe).
+- **macOS:** Tauri desktop application packaged as a .dmg.
+- **Web:** Vite development and preview build.
+
+All app targets use the same TypeScript editor and project formats.
 
 ## Editor
 
-- Responsive Android/mobile and desktop layouts.
-- 2D canvas scene editor with object hierarchy, inspector, touch/mouse positioning and play/stop preview.
-- Interactive Three.js 3D viewport with orbit and zoom controls.
-- Primitive 3D objects and import of Claude-generated scene/model JSON.
-- Monaco code editor with Luau highlighting and language selection.
-- Local project save/restore and JSON import/export.
-- ELG package manifest validation. Plugin code execution is not enabled yet.
+- Separate 2D Canvas and 3D Three.js viewports.
+- Orbit controls, grid, lighting and primitive 3D geometry.
+- 2D scene hierarchy, object selection, touch/mouse drag editing and property inspector.
+- Play/stop preview, script editor with Luau and other language modes.
+- Save/restore local projects and import/export `.luq.json`, `.scene.json`, and `.model.json` assets.
+- Build pipelines for Android APK, Roblox `.rbxl`, Windows installer and macOS DMG.
 
-## Platform targets
+## Claude AI authoring bridge (MCP)
 
-| Target | Build path | Output |
-|---|---|---|
-| Android | Capacitor + GitHub Actions | Debug APK |
-| Windows | Tauri + GitHub Actions | NSIS .exe installer |
-| macOS | Tauri + GitHub Actions | .dmg |
-| Web | Vite | Browser app |
-| Roblox | Rojo | .rbxl place file |
+The Claude MCP server is designed so Claude can **create and modify game projects**, not just inspect them. It exposes tools for:
 
-## Run the editor
+- Reading, listing and writing project code and assets.
+- Creating Luau, TypeScript, JavaScript, Python, Rust, C#, and GLSL scripts.
+- Creating 2D and 3D scene documents and adding scene objects.
+- Generating seeded 2D tile maps and 3D terrain maps.
+- Creating procedural 3D models from primitives or custom vertex/index meshes.
+- Creating project assets in the `ai-workspace/` directory.
 
-    npm install
-    npm run dev
+Claude can use these tools to build levels, maps, models, gameplay scripts and project files. The current integration writes standard JSON scene/model assets; import them in the editor with **Open**. Claude's edits to source files are made in the local project folder where the MCP server runs. Review changes before building or publishing.
+
+### Connect Claude Desktop
+
+1. Clone this repository onto the computer running Claude Desktop.
+2. Install Node.js 22 or later.
+3. Run `npm ci` in the repository folder.
+4. Copy `claude/claude_desktop_config.example.json` into Claude Desktop's MCP configuration and replace the placeholder with the absolute path to `mcp/server.mjs`.
+5. Restart Claude Desktop and verify that the LuqGameEngine tools appear.
+
+Example MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "luqgameengine": {
+      "command": "node",
+      "args": ["/absolute/path/to/LuqGameEngine/mcp/server.mjs"]
+    }
+  }
+}
+```
+
+The MCP server has project-root path restrictions and blocks dependency, Git metadata and environment-secret paths. Claude Desktop asks the user to approve tool calls according to its own MCP permissions. Keep backups and review changes. The bridge does not itself provide an AI model or generate images outside the model's available capabilities.
+
+## Development
+
+```bash
+npm ci
+npm run dev
+```
 
 ## Android APK
 
-    npm run android:init
-    npm run android:sync
-    npm run android:apk
+```bash
+npm run android:init
+npm run android:sync
+npm run android:apk
+```
 
-The Android Actions workflow installs Android SDK platform 35 and uses Java 21. It uploads the debug APK as an artifact after a successful build.
-
-## Desktop builds
-
-Use the GitHub Actions Desktop packages workflow to build Windows and macOS packages. The workflow uploads separate artifacts for each operating system. Locally, install the Tauri prerequisites for your OS and run:
-
-    npm run tauri:build
+GitHub Actions builds a debug APK and uploads it as an artifact.
 
 ## Roblox
 
-    cargo install rojo --locked
-    npm run roblox:build
+Install Rust and Rojo:
 
-Creates dist/roblox-game.rbxl. Final playtesting should be done in Roblox Studio. Publishing requires a Roblox Open Cloud key, Place ID and an explicit publish action.
+```bash
+cargo install rojo --locked
+npm run roblox:build
+```
 
-## Claude AI Studio / MCP
+Creates `dist/roblox-game.rbxl`. Final testing and publishing should be done through Roblox Studio / Roblox Open Cloud. Publishing requires a Roblox Open Cloud API key with place write permission and a Place ID; do not commit credentials.
 
-Run npm run mcp over stdio. Follow claude/README.md to connect Claude Desktop. Claude can inspect and write code, create 2D/3D scenes, add scene objects, generate deterministic 3D terrain maps, create procedural model descriptors, and create scripts. Writes are constrained to src/, roblox/src/, and ai-workspace/.
+## Desktop packages
 
-Generated scene files use LuqGameScene/1 and model files use LuqGameModel/1; import these JSON files with the editor's Open action. Claude's MCP tools provide the authoring interface; the connected Claude model supplies the AI reasoning and code/model design.
+The Desktop packages workflow creates a Windows NSIS installer and macOS DMG. Download artifacts from the GitHub Actions run. These are separate desktop packages, not Android APKs.
 
 ## ELG plugins
 
-.elg packages currently validate metadata and requested permissions. Executable plugin sandboxing and a capability API are still future work. Do not treat manifest validation as plugin execution.
+An `.elg` package currently supports manifest validation and permission declarations. Sandboxed execution and a full plugin SDK are not implemented yet; do not treat arbitrary plugin code as trusted.
 
-## Language support
+## Current scope and limitations
 
-The editor provides Monaco language modes and custom Luau highlighting. Language selection enables syntax editing where Monaco has a language mode. Compiling/running other languages requires their external toolchains or adapters.
-
-## Current limitations
-
-This is an early engine foundation, not a finished commercial 3D engine. The 3D viewport currently renders primitive meshes and imported structured scene/model data; full sculpting, advanced materials, physics, animation, audio authoring, asset marketplace, secure executable plugins, native on-device profiling, and a full Roblox runtime remain development work. Platform artifacts must pass their workflows and be tested on the target device before release.
+The runtime currently contains a 2D canvas renderer and a Three.js 3D viewport with primitive/custom mesh loading. This is an early engine foundation, not a mature full game engine. Physics, animation, audio authoring, advanced material/shader graphs, robust asset importers, 3D scene hierarchy editing and on-device performance validation remain future work. Monaco language modes provide editing/highlighting; most languages still need compiler/runtime adapters before they can execute inside the engine.
