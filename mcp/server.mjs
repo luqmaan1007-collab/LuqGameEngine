@@ -40,7 +40,8 @@ const tools = [
     width: number('Map width in tiles', { minimum: 1, maximum: 48 }),
     depth: number('Map depth in tiles', { minimum: 1, maximum: 48 }),
     seed: number('Integer seed for reproducible terrain', { minimum: 0, maximum: 2147483647 }),
-    tileSize: number('World-space tile size', { minimum: 0.5, maximum: 20 })
+    tileSize: number('World-space tile size', { minimum: 0.5, maximum: 20 }),
+    dimension: enumString('Map dimension', ['2d','3d'])
   }, ['name','width','depth']),
   tool('model_create', 'Create a reusable procedural 3D model descriptor made from primitive mesh parts.', {
     name: string('Model name'),
@@ -160,6 +161,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
         const name = String(args.name ?? '').trim();
         const width = Math.floor(Number(args.width)), depth = Math.floor(Number(args.depth));
         const seed = Math.floor(Number(args.seed ?? 1)), tileSize = Number(args.tileSize ?? 2);
+        const dimension = args.dimension === '2d' ? '2d' : '3d';
         if (!name || !Number.isInteger(width) || !Number.isInteger(depth) || width < 1 || depth < 1 || width > 48 || depth > 48 || !Number.isFinite(tileSize) || tileSize <= 0) throw new Error('Map dimensions or tile size are invalid (maximum 48 by 48)');
         let state = seed >>> 0;
         const random = () => { state = (1664525 * state + 1013904223) >>> 0; return state / 4294967296; };
@@ -168,11 +170,15 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
           const wave = Math.sin(x * 0.24) * 0.8 + Math.cos(z * 0.21) * 0.65;
           const height = Math.max(0.2, Math.round((1.4 + wave + random() * 0.9) * 4) / 4);
           const water = height < 0.65;
-          nodes.push({ id: crypto.randomUUID(), name: water ? 'Water ' + x + '-' + z : 'Terrain ' + x + '-' + z, kind: 'box', position: { x:(x - width/2)*tileSize, y:water ? -0.35 : height/2, z:(z - depth/2)*tileSize }, scale: { x:tileSize, y:water ? 0.5 : height, z:tileSize }, color: water ? '#2879a8' : height > 2.4 ? '#788a78' : '#628b58', active: true, tags: water ? ['water'] : ['terrain'] });
+          if (dimension === '2d') {
+            nodes.push({ id: crypto.randomUUID(), name: water ? 'Water ' + x + '-' + z : 'Ground ' + x + '-' + z, kind: 'rect2d', position: { x:x*tileSize, y:z*tileSize, z:0 }, scale: { x:tileSize, y:tileSize, z:1 }, color: water ? '#2879a8' : height > 2.4 ? '#788a78' : '#628b58', active: true, tags: water ? ['water'] : ['terrain'] });
+          } else {
+            nodes.push({ id: crypto.randomUUID(), name: water ? 'Water ' + x + '-' + z : 'Terrain ' + x + '-' + z, kind: 'box', position: { x:(x - width/2)*tileSize, y:water ? -0.35 : height/2, z:(z - depth/2)*tileSize }, scale: { x:tileSize, y:water ? 0.5 : height, z:tileSize }, color: water ? '#2879a8' : height > 2.4 ? '#788a78' : '#628b58', active: true, tags: water ? ['water'] : ['terrain'] });
+          }
         }
         const file = resolveWrite('ai-workspace/scenes/' + slug(name) + '.scene.json');
         await fs.mkdir(path.dirname(file.full), { recursive: true });
-        const data = { format: 'LuqGameScene/1', name, dimension: '3d', version: 1, nodes, metadata: { generator: 'LuqGameEngine terrain generator', seed, width, depth, tileSize } };
+        const data = { format: 'LuqGameScene/1', name, dimension, version: 1, nodes, metadata: { generator: 'LuqGameEngine terrain generator', seed, width, depth, tileSize } };
         await fs.writeFile(file.full, JSON.stringify(data, null, 2) + '\n');
         return output({ scene: file.relative, dimensions: [width, depth], objectCount: nodes.length, format: data.format });
       }
