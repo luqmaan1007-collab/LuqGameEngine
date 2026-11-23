@@ -116,6 +116,7 @@ export class Editor {
 
   private setMode(mode: '2d' | '3d'): void {
     this.viewportMode = mode;
+    this.threeD?.setActive(mode === '3d');
     this.canvas.hidden = mode !== '2d';
     this.canvas3d.hidden = mode !== '3d';
     const title = this.root.querySelector<HTMLElement>('#viewport-title');
