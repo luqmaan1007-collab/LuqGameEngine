@@ -23,6 +23,7 @@ export class Viewport3D {
   private readonly pointer = new THREE.Vector2();
   private selectionHandler?: (node?: Scene3DNode) => void;
   private frame = 0;
+  private active = false;
   private readonly resizeObserver: ResizeObserver;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -48,7 +49,6 @@ export class Viewport3D {
     this.resizeObserver.observe(canvas.parentElement ?? canvas);
     window.addEventListener('resize', this.resize);
     this.resize();
-    this.animate();
   }
 
   private resize = (): void => {
@@ -60,10 +60,18 @@ export class Viewport3D {
     this.renderer.setSize(width, height, false);
   };
 
+  setActive(active: boolean): void {
+    this.active = active;
+    if (active && !this.frame) this.frame = requestAnimationFrame(this.animate);
+    else if (!active && this.frame) { cancelAnimationFrame(this.frame); this.frame = 0; }
+  }
+
   private animate = (): void => {
-    this.frame = requestAnimationFrame(this.animate);
+    this.frame = 0;
+    if (!this.active) return;
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+    this.frame = requestAnimationFrame(this.animate);
   };
 
   addPrimitive(node: Scene3DNode): string {
@@ -183,7 +191,9 @@ export class Viewport3D {
   }
 
   dispose(): void {
+    this.active = false;
     cancelAnimationFrame(this.frame);
+    this.frame = 0;
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this.resize);
     this.controls.dispose();
