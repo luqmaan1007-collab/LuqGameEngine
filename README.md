@@ -31,16 +31,16 @@ The Claude MCP server is designed so Claude can **create and modify game project
 - Creating procedural 3D models from primitives or custom vertex/index meshes.
 - Creating project assets in the `ai-workspace/` directory.
 
-Claude can use these tools to build levels, maps, models, gameplay scripts and project files. The current integration writes standard JSON scene/model assets; import them in the editor with **Open**. Claude's edits to source files are made in the local project folder where the MCP server runs. Review changes before building or publishing.
+Claude can use these tools to build levels, maps, models, gameplay scripts and project files. The current integration writes standard JSON scene/model assets; import them in the editor with **Open**. Claude's edits are written to the folder selected by `LUQGAMEENGINE_PROJECT` (or the repository folder if it is omitted). Review changes before building or publishing.
 
 ### Connect Claude Desktop
 
 1. Clone this repository onto the computer running Claude Desktop.
 2. Install Node.js 22 or later.
-3. Run `npm ci` in the repository folder.
+3. Run `npm install` in the repository folder.
 4. Copy `claude/claude_desktop_config.example.json` into Claude Desktop's MCP configuration and replace the placeholder with the absolute path to `mcp/server.mjs`.
 5. Set `LUQGAMEENGINE_PROJECT` in the MCP entry to the absolute path of the game project you want Claude to edit.
-6. Restart Claude Desktop and verify that the LuqGameEngine tools appear.
+6. Set `LUQGAMEENGINE_PROJECT` to the absolute path of the project folder Claude should edit.\n7. Restart Claude Desktop and verify that the LuqGameEngine tools appear.
 
 Example MCP configuration:
 
@@ -96,4 +96,4 @@ An `.elg` package currently supports manifest validation and permission declarat
 
 ## Current scope and limitations
 
-The runtime currently contains a 2D canvas renderer and a Three.js 3D viewport with primitive/custom mesh loading. This is an early engine foundation, not a mature full game engine. Physics, animation, audio authoring, advanced material/shader graphs, robust asset importers, 3D scene hierarchy editing and on-device performance validation remain future work. Monaco language modes provide editing/highlighting; most languages still need compiler/runtime adapters before they can execute inside the engine.
+The runtime currently contains a 2D canvas renderer and a Three.js 3D viewport with primitive/custom mesh loading. This is an early engine foundation, not a mature full game engine. Physics, animation, audio authoring, advanced material/shader graphs, robust asset importers, advanced 3D editing and on-device performance validation remain future work. Monaco language modes provide editing/highlighting; most languages still need compiler/runtime adapters before they can execute inside the engine.
