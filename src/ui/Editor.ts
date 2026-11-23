@@ -100,8 +100,60 @@ export class Editor {
   attachRuntime(scene: Scene, engine: Engine): void {
     this.scene = scene;
     this.engine = engine;
+    this.restoreLocalProject();
     this.select(scene.entities[0]);
     this.renderHierarchy();
+
+    let dragging: Entity | undefined;
+    let offsetX = 0;
+    let offsetY = 0;
+    this.canvas.addEventListener('pointerdown', event => {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * this.canvas.width / rect.width;
+      const y = (event.clientY - rect.top) * this.canvas.height / rect.height;
+      const hit = [...scene.entities].reverse().find(entity => {
+        const t = entity.get<Transform>('Transform');
+        return entity.active && t && x >= t.x && y >= t.y && x <= t.x + t.width && y <= t.y + t.height;
+      });
+      if (!hit) return;
+      this.select(hit);
+      const t = hit.get<Transform>('Transform')!;
+      dragging = hit; offsetX = x - t.x; offsetY = y - t.y;
+      this.canvas.setPointerCapture(event.pointerId);
+    });
+    this.canvas.addEventListener('pointermove', event => {
+      if (!dragging) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const t = dragging.get<Transform>('Transform');
+      if (!t) return;
+      t.x = (event.clientX - rect.left) * this.canvas.width / rect.width - offsetX;
+      t.y = (event.clientY - rect.top) * this.canvas.height / rect.height - offsetY;
+      const xInput = this.root.querySelector<HTMLInputElement>('#prop-x');
+      const yInput = this.root.querySelector<HTMLInputElement>('#prop-y');
+      if (xInput) xInput.value = String(Math.round(t.x));
+      if (yInput) yInput.value = String(Math.round(t.y));
+    });
+    this.canvas.addEventListener('pointerup', () => { dragging = undefined; });
+    this.canvas.addEventListener('pointercancel', () => { dragging = undefined; });
+  }
+
+  private restoreLocalProject(): void {
+    try {
+      const raw = localStorage.getItem('luqgameengine.project');
+      if (!raw || !this.scene) return;
+      const data = JSON.parse(raw) as SavedProject & { code?: string };
+      if (data.format !== 'LuqGameProject/1' || !Array.isArray(data.entities)) return;
+      this.scene.entities.splice(0);
+      for (const saved of data.entities) {
+        if (!saved || typeof saved.name !== 'string') continue;
+        const entity = new Entity(saved.name);
+        entity.active = saved.active !== false;
+        if (saved.transform) entity.add(new Transform(saved.transform.x, saved.transform.y, saved.transform.width, saved.transform.height));
+        this.scene.add(entity);
+      }
+      this.scene.name = data.scene || 'Main Scene';
+      if (typeof data.code === 'string') this.editor?.setValue(data.code);
+    } catch { this.setStatus('Saved project could not be restored'); }
   }
 
   private renderHierarchy(): void {
