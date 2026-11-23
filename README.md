@@ -1,78 +1,67 @@
 # LuqGameEngine
 
-LuqGameEngine is an Android-first game creation workspace with a browser editor, scene preview, Luau/Roblox project pipeline, and desktop packaging targets.
+LuqGameEngine is an Android-first game creation app with a browser editor and native desktop builds. It includes 2D and interactive 3D scene editing, a Luau/Roblox pipeline, and an MCP bridge that lets Claude author project code and scene/model assets.
 
-## Editor features
+## Editor
 
-- Responsive editor layout designed for mobile and desktop.
-- Scene hierarchy with object selection and deletion.
-- 2D canvas viewport with direct touch/mouse drag positioning.
-- Inspector for object name, position, dimensions, and active state.
-- Play/stop preview controls and F5 shortcut.
-- Monaco script editor with Luau highlighting and a language selector.
-- Save project locally (Ctrl/Cmd+S), restore the saved project on next launch, import and export .luq.json project files.
-- ELG package manifest validation and permission checks.
+- Responsive Android/mobile and desktop layouts.
+- 2D canvas scene editor with object hierarchy, inspector, touch/mouse positioning and play/stop preview.
+- Interactive Three.js 3D viewport with orbit and zoom controls.
+- Primitive 3D objects and import of Claude-generated scene/model JSON.
+- Monaco code editor with Luau highlighting and language selection.
+- Local project save/restore and JSON import/export.
+- ELG package manifest validation. Plugin code execution is not enabled yet.
 
 ## Platform targets
 
 | Target | Build path | Output |
 |---|---|---|
 | Android | Capacitor + GitHub Actions | Debug APK |
-| Roblox | Rojo | .rbxl |
-| Windows | Tauri | .exe installer |
-| macOS | Tauri | .dmg |
+| Windows | Tauri + GitHub Actions | NSIS .exe installer |
+| macOS | Tauri + GitHub Actions | .dmg |
 | Web | Vite | Browser app |
+| Roblox | Rojo | .rbxl place file |
 
-## Run locally
+## Run the editor
 
-~~~bash
-npm install
-npm run dev
-~~~
+    npm install
+    npm run dev
 
 ## Android APK
 
-~~~bash
-npm run android:init
-npm run android:sync
-npm run android:apk
-~~~
+    npm run android:init
+    npm run android:sync
+    npm run android:apk
 
-The Android workflow also runs from GitHub Actions and uploads the APK as a build artifact.
+The Android Actions workflow installs Android SDK platform 35 and uses Java 21. It uploads the debug APK as an artifact after a successful build.
 
-## Roblox project
+## Desktop builds
 
-Install Rust and Rojo, then run:
+Use the GitHub Actions Desktop packages workflow to build Windows and macOS packages. The workflow uploads separate artifacts for each operating system. Locally, install the Tauri prerequisites for your OS and run:
 
-~~~bash
-cargo install rojo --locked
-npm run roblox:build
-~~~
+    npm run tauri:build
 
-Creates dist/roblox-game.rbxl. Roblox Studio is recommended for final playtesting and inspection. Publishing requires a Roblox Open Cloud API key with place write permission and a Place ID:
+## Roblox
 
-~~~bash
-ROBLOX_API_KEY=... ROBLOX_PLACE_ID=... npm run roblox:publish
-~~~
+    cargo install rojo --locked
+    npm run roblox:build
 
-The publish script requires an explicit publish flag to prevent accidental uploads.
+Creates dist/roblox-game.rbxl. Final playtesting should be done in Roblox Studio. Publishing requires a Roblox Open Cloud key, Place ID and an explicit publish action.
 
-## Desktop packages
+## Claude AI Studio / MCP
 
-The Tauri workflow builds a Windows installer and macOS disk image. Run it manually from the Actions tab when the workflow is enabled.
+Run npm run mcp over stdio. Follow claude/README.md to connect Claude Desktop. Claude can inspect and write code, create 2D/3D scenes, add scene objects, generate deterministic 3D terrain maps, create procedural model descriptors, and create scripts. Writes are constrained to src/, roblox/src/, and ai-workspace/.
 
-## Claude / MCP
-
-Run npm run mcp over stdio. The example Claude Desktop configuration is in claude/claude_desktop_config.example.json. The current MCP server exposes read-only project inspection tools.
+Generated scene files use LuqGameScene/1 and model files use LuqGameModel/1; import these JSON files with the editor's Open action. Claude's MCP tools provide the authoring interface; the connected Claude model supplies the AI reasoning and code/model design.
 
 ## ELG plugins
 
-An .elg file uses the ELG/1 JSON manifest format. The current plugin manager validates metadata, entrypoint presence, and declared permissions. It does not execute plugin code; safe sandboxed plugin execution is still future work.
+.elg packages currently validate metadata and requested permissions. Executable plugin sandboxing and a capability API are still future work. Do not treat manifest validation as plugin execution.
 
 ## Language support
 
-The editor includes Monaco language modes and a custom Luau tokenizer. Language selection enables syntax editing where Monaco provides a language service. Running or compiling other languages requires their external toolchains/adapters.
+The editor provides Monaco language modes and custom Luau highlighting. Language selection enables syntax editing where Monaco has a language mode. Compiling/running other languages requires their external toolchains or adapters.
 
 ## Current limitations
 
-This is an actively developed engine foundation, not yet a full commercial-grade 3D engine. The current runtime is 2D Canvas-based. A 3D renderer, physics, animation, asset browser/import pipeline, scene serialization beyond the project JSON format, secure plugin sandbox, and on-device performance testing remain outstanding. Roblox, Android, Windows, and macOS outputs must be built and tested through their platform workflows before being considered release-ready.
+This is an early engine foundation, not a finished commercial 3D engine. The 3D viewport currently renders primitive meshes and imported structured scene/model data; full sculpting, advanced materials, physics, animation, audio authoring, asset marketplace, secure executable plugins, native on-device profiling, and a full Roblox runtime remain development work. Platform artifacts must pass their workflows and be tested on the target device before release.
