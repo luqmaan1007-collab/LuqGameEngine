@@ -14,4 +14,6 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - run: node --check mcp/server.mjs
+      - run: npm run test:mcp
       - run: npm run build
