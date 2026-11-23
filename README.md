@@ -14,7 +14,7 @@ All app targets use the same TypeScript editor and project formats.
 ## Editor
 
 - Separate 2D Canvas and 3D Three.js viewports.
-- Orbit controls, grid, lighting and primitive 3D geometry.
+- Orbit controls, grid, lighting, selectable objects, editable transforms, custom meshes, and box/sphere/cylinder/cone/torus/capsule/ring primitives.
 - 2D scene hierarchy, object selection, touch/mouse drag editing and property inspector.
 - Play/stop preview, script editor with Luau and other language modes.
 - Save/restore local projects and import/export `.luq.json`, `.scene.json`, and `.model.json` assets.
