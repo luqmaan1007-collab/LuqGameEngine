@@ -1,15 +1,17 @@
 import * as monaco from 'monaco-editor';
 import { languages } from '../languages/registry';
+import { PluginManager } from '../plugins/PluginManager';
 
 export class Editor {
   readonly canvas: HTMLCanvasElement;
   private status!: HTMLElement;
   private editor?: monaco.editor.IStandaloneCodeEditor;
+  private readonly plugins = new PluginManager();
 
   constructor(private readonly root: HTMLElement) {
     root.innerHTML = `
       <div class="app-shell">
-        <header class="topbar"><div class="brand-mark">L</div><strong>LuqGameEngine</strong><span class="version">0.2 DEV</span><nav><button id="play">▶ Play</button><button id="export">Export</button></nav></header>
+        <header class="topbar"><div class="brand-mark">L</div><strong>LuqGameEngine</strong><span class="version">0.2 DEV</span><nav><button id="play">▶ Play</button><button id="plugin-upload">Import .elg</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><button id="export">Export</button></nav></header>
         <div class="layout">
           <aside class="sidebar"><div class="panel-title">PROJECT</div><div class="file active">▸ Main Scene</div><div class="file">▸ Scripts / main.server.luau</div><div class="file">▸ Roblox / default.project.json</div><div class="file">▸ Plugins / sample.elg</div><div class="panel-title">LANGUAGES</div><div class="language-list">${languages.map(l=>`<span>${l.label}</span>`).join('')}</div></aside>
           <main class="center"><div class="tabs"><span class="tab selected">Game Preview</span><span class="tab">Script Editor</span></div><section class="preview"><canvas width="640" height="360"></canvas></section><section class="code-panel"><div class="code-toolbar"><span class="panel-title">CODE EDITOR</span><select id="language" aria-label="Programming language"></select></div><div id="code"></div></section></main>
@@ -21,7 +23,8 @@ export class Editor {
     const status = root.querySelector<HTMLElement>('#status');
     const code = root.querySelector<HTMLElement>('#code');
     const languageSelect = root.querySelector<HTMLSelectElement>('#language');
-    if (!canvas || !status || !code || !languageSelect) throw new Error('Editor view failed');
+    const pluginInput = root.querySelector<HTMLInputElement>('#plugin-file');
+    if (!canvas || !status || !code || !languageSelect || !pluginInput) throw new Error('Editor view failed');
     this.canvas = canvas;
     this.status = status;
 
@@ -47,6 +50,20 @@ export class Editor {
       const supported = monaco.languages.getLanguages().some(item => item.id === selected.monacoId);
       monaco.editor.setModelLanguage(this.editor.getModel()!, supported ? selected.monacoId : 'plaintext');
       this.setStatus(supported ? `Editing ${selected.label}` : `${selected.label}: text editing enabled; add a language adapter/toolchain for diagnostics and execution`);
+    });
+
+    root.querySelector('#plugin-upload')?.addEventListener('click', () => pluginInput.click());
+    pluginInput.addEventListener('change', async () => {
+      const file = pluginInput.files?.[0];
+      if (!file) return;
+      try {
+        const plugin = await this.plugins.inspect(file);
+        this.setStatus(`Validated ELG plugin: ${plugin.name} v${plugin.version} · permissions: ${plugin.permissions.join(', ') || 'none'}`);
+      } catch (error) {
+        this.setStatus(error instanceof Error ? error.message : 'ELG plugin validation failed');
+      } finally {
+        pluginInput.value = '';
+      }
     });
     root.querySelector('#play')?.addEventListener('click', () => this.setStatus('Preview running'));
     root.querySelector('#export')?.addEventListener('click', () => this.setStatus('Use the build scripts for APK, RBXL, EXE and DMG exports'));
