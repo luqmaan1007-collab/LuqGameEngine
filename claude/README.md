@@ -9,7 +9,7 @@ Claude connects through the Model Context Protocol (MCP). This is an **AI author
 3. Run `npm install` in the repository folder.
 4. Open Claude Desktop's MCP configuration file.
 5. Copy the server entry from `claude_desktop_config.example.json` and replace the placeholder with the absolute path to `mcp/server.mjs`.
-6. Restart Claude Desktop. The LuqGameEngine tools should appear in Claude's available tools.
+6. Set `LUQGAMEENGINE_PROJECT` to the absolute path of the project folder Claude should edit.\n7. Restart Claude Desktop. The LuqGameEngine tools should appear in Claude's available tools.
 
 Do not put API keys or passwords in the MCP configuration.
 
