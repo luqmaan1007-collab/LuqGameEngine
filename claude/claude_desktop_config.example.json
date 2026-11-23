@@ -2,7 +2,10 @@
   "mcpServers": {
     "luqgameengine": {
       "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/LuqGameEngine/mcp/server.mjs"]
+      "args": ["/ABSOLUTE/PATH/TO/LuqGameEngine/mcp/server.mjs"],
+      "env": {
+        "LUQGAMEENGINE_PROJECT": "/ABSOLUTE/PATH/TO/YOUR/LuqGameEngine/PROJECT"
+      }
     }
   }
 }
