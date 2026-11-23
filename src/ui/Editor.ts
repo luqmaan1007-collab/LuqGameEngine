@@ -30,12 +30,12 @@ export class Editor {
     root.innerHTML = [
       '<div class="app-shell">',
       '<header class="topbar"><div class="brand"><div class="brand-mark">L</div><div><strong>LuqGameEngine</strong><small>GAME STUDIO <span>EARLY ACCESS</span></small></div></div>',
-      '<div class="top-actions"><button class="icon-btn" id="mode-2d">2D</button><button class="icon-btn" id="mode-3d">3D</button><button class="icon-btn" id="add-3d">＋ 3D</button><button class="icon-btn" id="save" title="Save project">Save</button><button class="icon-btn" id="import-project">Open</button><button class="primary-btn" id="play">▶ Play</button><button class="icon-btn" id="export">Export</button><button class="icon-btn" id="plugin-upload">＋ Plugin</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><input id="project-file" type="file" accept=".json,.luq" hidden></div></header>',
+      '<div class="top-actions"><button class="icon-btn" id="mode-2d">2D</button><button class="icon-btn" id="mode-3d">3D</button><button class="icon-btn" id="add-3d">＋ 3D</button><button class="icon-btn" id="save" title="Save project">Save</button><button class="icon-btn" id="import-project">Open</button><button class="primary-btn" id="play">▶ Play</button><button class="icon-btn" id="export">Export</button><button class="icon-btn" id="plugin-upload">＋ Plugin</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><input id="project-file" type="file" accept=".json,.luq,.scene.json,.model.json" hidden></div></header>',
       '<div class="workspace">',
-      '<aside class="left-panel"><div class="panel-heading"><span>PROJECT</span><button id="new-object" class="mini-btn" title="Add object">＋</button></div><div class="project-name">My Game <span>LOCAL</span></div><div class="tree" id="hierarchy"></div>',
+      '<aside class="left-panel"><div class="panel-heading"><span>PROJECT</span><button id="new-object" class="mini-btn" title="Add 2D object">＋</button></div><div class="project-name">My Game <span>LOCAL</span></div><div class="tree" id="hierarchy"></div>',
       '<div class="panel-heading languages-heading"><span>LANGUAGES</span></div><div class="language-list">' + languages.map(l => '<span>' + l.label + '</span>').join('') + '</div></aside>',
-      '<main class="center-panel"><div class="document-tabs"><span class="doc-tab active">◈ Main Scene</span><span class="doc-tab">⌘ main.server.luau</span><span class="spacer"></span><span class="viewport-label">2D VIEWPORT</span></div>',
-      '<section class="preview-wrap"><div class="viewport-toolbar"><span>SCENE VIEW</span><span>640 × 360</span><button id="reset-view">Reset view</button></div><div class="preview"><canvas width="640" height="360" aria-label="Game scene preview"></canvas></div></section>',
+      '<main class="center-panel"><div class="document-tabs"><span class="doc-tab active">◈ Main Scene</span><span class="doc-tab">⌘ main.server.luau</span><span class="spacer"></span><span class="viewport-label" id="viewport-title">2D VIEWPORT</span></div>',
+      '<section class="preview-wrap"><div class="viewport-toolbar"><span>SCENE VIEW</span><span id="viewport-size">640 × 360</span><button id="reset-view">Reset view</button></div><div class="preview"><canvas id="viewport-2d" width="640" height="360" aria-label="2D game scene preview"></canvas><canvas id="viewport-3d" aria-label="3D game scene preview" hidden></canvas></div></section>',
       '<section class="code-panel"><div class="code-toolbar"><div><span class="panel-heading-text">SCRIPT EDITOR</span><span class="file-path">/ Scripts / main.server.luau</span></div><select id="language" aria-label="Programming language"></select></div><div id="code"></div></section></main>',
       '<aside class="right-panel"><div class="panel-heading"><span>INSPECTOR</span><span class="inspector-tag">OBJECT</span></div><div id="inspector-content" class="inspector-content"><div class="empty-inspector">Select an object in the hierarchy to edit its properties.</div></div>',
       '<div class="panel-heading export-heading"><span>BUILD TARGETS</span></div><div class="build-list"><div><b>◉</b><span>Android APK</span><small>Capacitor</small></div><div><b>◈</b><span>Roblox place</span><small>.rbxl</small></div><div><b>▣</b><span>Windows app</span><small>.exe</small></div><div><b>▣</b><span>macOS app</span><small>.dmg</small></div></div><div class="build-note">Builds run in GitHub Actions. Open the repository Actions tab to download generated artifacts.</div></aside>',
@@ -51,6 +51,7 @@ export class Editor {
     if (!canvas || !canvas3d || !status || !code || !languageSelect || !pluginInput) throw new Error('Editor view failed');
     this.canvas = canvas;
     this.canvas3d = canvas3d;
+    this.canvas3d.hidden = true;
     this.status = status;
 
     for (const language of languages) {
