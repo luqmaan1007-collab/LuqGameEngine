@@ -5,14 +5,18 @@ import { Scene } from '../runtime/Scene';
 import { Entity } from '../runtime/Entity';
 import { Transform } from '../runtime/components/Transform';
 import { Engine } from '../runtime/Engine';
+import { Viewport3D, type Scene3DNode } from '../runtime/Viewport3D';
 
 type SavedEntity = { id?: string; name: string; active: boolean; transform?: {x:number;y:number;width:number;height:number} };
-type SavedProject = { format: 'LuqGameProject/1'; scene: string; entities: SavedEntity[] };
+type SavedProject = { format: 'LuqGameProject/1'; scene: string; entities: SavedEntity[]; nodes3d?: Scene3DNode[] };
 
 const starterCode = 'local Players = game:GetService("Players")\n\nlocal function onPlayerAdded(player: Player)\n    print("Welcome, " .. player.Name)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\n';
 
 export class Editor {
   readonly canvas: HTMLCanvasElement;
+  readonly canvas3d: HTMLCanvasElement;
+  private threeD?: Viewport3D;
+  private viewportMode: '2d' | '3d' = '2d';
   private status!: HTMLElement;
   private editor?: monaco.editor.IStandaloneCodeEditor;
   private readonly plugins = new PluginManager();
@@ -25,7 +29,7 @@ export class Editor {
     root.innerHTML = [
       '<div class="app-shell">',
       '<header class="topbar"><div class="brand"><div class="brand-mark">L</div><div><strong>LuqGameEngine</strong><small>GAME STUDIO <span>EARLY ACCESS</span></small></div></div>',
-      '<div class="top-actions"><button class="icon-btn" id="save" title="Save project">Save</button><button class="icon-btn" id="import-project">Open</button><button class="primary-btn" id="play">▶ Play</button><button class="icon-btn" id="export">Export</button><button class="icon-btn" id="plugin-upload">＋ Plugin</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><input id="project-file" type="file" accept=".json,.luq" hidden></div></header>',
+      '<div class="top-actions"><button class="icon-btn" id="mode-2d">2D</button><button class="icon-btn" id="mode-3d">3D</button><button class="icon-btn" id="add-3d">＋ 3D</button><button class="icon-btn" id="save" title="Save project">Save</button><button class="icon-btn" id="import-project">Open</button><button class="primary-btn" id="play">▶ Play</button><button class="icon-btn" id="export">Export</button><button class="icon-btn" id="plugin-upload">＋ Plugin</button><input id="plugin-file" type="file" accept=".elg,application/json" hidden><input id="project-file" type="file" accept=".json,.luq" hidden></div></header>',
       '<div class="workspace">',
       '<aside class="left-panel"><div class="panel-heading"><span>PROJECT</span><button id="new-object" class="mini-btn" title="Add object">＋</button></div><div class="project-name">My Game <span>LOCAL</span></div><div class="tree" id="hierarchy"></div>',
       '<div class="panel-heading languages-heading"><span>LANGUAGES</span></div><div class="language-list">' + languages.map(l => '<span>' + l.label + '</span>').join('') + '</div></aside>',
@@ -37,13 +41,15 @@ export class Editor {
       '</div><footer><span><i class="status-dot"></i> <span id="runtime-state">Runtime ready</span></span><span id="status">Welcome to LuqGameEngine</span><span>Touch · Mouse · Keyboard</span></footer></div>'
     ].join('');
 
-    const canvas = root.querySelector('canvas');
+    const canvas = root.querySelector<HTMLCanvasElement>('#viewport-2d');
+    const canvas3d = root.querySelector<HTMLCanvasElement>('#viewport-3d');
     const status = root.querySelector<HTMLElement>('#status');
     const code = root.querySelector<HTMLElement>('#code');
     const languageSelect = root.querySelector<HTMLSelectElement>('#language');
     const pluginInput = root.querySelector<HTMLInputElement>('#plugin-file');
-    if (!canvas || !status || !code || !languageSelect || !pluginInput) throw new Error('Editor view failed');
+    if (!canvas || !canvas3d || !status || !code || !languageSelect || !pluginInput) throw new Error('Editor view failed');
     this.canvas = canvas;
+    this.canvas3d = canvas3d;
     this.status = status;
 
     for (const language of languages) {
@@ -91,10 +97,34 @@ export class Editor {
     root.querySelector('#new-object')?.addEventListener('click', () => this.addObject());
     root.querySelector('#play')?.addEventListener('click', () => this.togglePlay());
     root.querySelector('#reset-view')?.addEventListener('click', () => this.setStatus('Viewport centered · 640 × 360'));
+    root.querySelector('#mode-2d')?.addEventListener('click', () => this.setMode('2d'));
+    root.querySelector('#mode-3d')?.addEventListener('click', () => this.setMode('3d'));
+    root.querySelector('#add-3d')?.addEventListener('click', () => this.add3DPrimitive());
     window.addEventListener('keydown', event => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); this.saveProject(); }
       if (event.key === 'F5') { event.preventDefault(); this.togglePlay(); }
     });
+  }
+
+  attach3D(viewport: Viewport3D): void { this.threeD = viewport; }
+
+  private setMode(mode: '2d' | '3d'): void {
+    this.viewportMode = mode;
+    this.canvas.hidden = mode !== '2d';
+    this.canvas3d.hidden = mode !== '3d';
+    const title = this.root.querySelector<HTMLElement>('#viewport-title');
+    if (title) title.textContent = mode.toUpperCase() + ' SCENE VIEW';
+    this.root.querySelector('#mode-2d')?.classList.toggle('active-mode', mode === '2d');
+    this.root.querySelector('#mode-3d')?.classList.toggle('active-mode', mode === '3d');
+    this.setStatus(mode === '3d' ? '3D viewport · drag to orbit, scroll to zoom' : '2D viewport');
+    window.dispatchEvent(new Event('resize'));
+  }
+
+  private add3DPrimitive(): void {
+    if (!this.threeD) return;
+    this.threeD.addPrimitive({ name: '3D Box', kind: 'box', position: { x: 0, y: 0.5, z: 0 }, scale: { x: 1, y: 1, z: 1 }, color: '#60a5fa' });
+    this.setMode('3d');
+    this.setStatus('Added a 3D box');
   }
 
   attachRuntime(scene: Scene, engine: Engine): void {
@@ -157,6 +187,7 @@ export class Editor {
         this.scene.add(entity);
       }
       this.scene.name = data.scene || 'Main Scene';
+      if (Array.isArray(data.nodes3d)) this.threeD?.loadNodes(data.nodes3d);
       if (typeof data.code === 'string') this.editor?.setValue(data.code);
     } catch { this.setStatus('Saved project could not be restored'); }
   }
@@ -221,7 +252,7 @@ export class Editor {
   }
 
   private snapshot(): SavedProject {
-    return { format: 'LuqGameProject/1', scene: this.scene?.name ?? 'Main Scene', entities: (this.scene?.entities ?? []).map(entity => {
+    return { format: 'LuqGameProject/1', scene: this.scene?.name ?? 'Main Scene', nodes3d: this.threeD?.listNodes() ?? [], entities: (this.scene?.entities ?? []).map(entity => {
       const t = entity.get<Transform>('Transform');
       return { name: entity.name, active: entity.active, transform: t ? { x:t.x, y:t.y, width:t.width, height:t.height } : undefined };
     }) };
@@ -242,8 +273,34 @@ export class Editor {
 
   private async importProject(file: File): Promise<void> {
     try {
-      const data = JSON.parse(await file.text()) as SavedProject & { code?: string };
-      if (data.format !== 'LuqGameProject/1' || !Array.isArray(data.entities) || !this.scene) throw new Error('Unsupported project file');
+      const data = JSON.parse(await file.text()) as SavedProject & { code?: string; dimension?: string; nodes?: Scene3DNode[]; parts?: Scene3DNode[] };
+      if (!this.scene) throw new Error('Runtime is not ready');
+      if (data.format === 'LuqGameScene/1' && Array.isArray(data.nodes)) {
+        if (data.dimension === '3d') {
+          this.threeD?.loadNodes(data.nodes);
+          this.setMode('3d');
+        } else {
+          this.scene.entities.splice(0);
+          for (const node of data.nodes) {
+            const entity = new Entity(node.name);
+            const position = node.position ?? {};
+            const scale = node.scale ?? {};
+            entity.add(new Transform(position.x ?? 0, position.y ?? 0, scale.x ?? 40, scale.y ?? 40));
+            this.scene.add(entity);
+          }
+          this.setMode('2d');
+          this.select(this.scene.entities[0]);
+        }
+        this.setStatus('Scene imported: ' + file.name);
+        return;
+      }
+      if (data.format === 'LuqGameModel/1' && Array.isArray(data.parts)) {
+        this.threeD?.loadNodes(data.parts);
+        this.setMode('3d');
+        this.setStatus('3D model imported: ' + file.name);
+        return;
+      }
+      if (data.format !== 'LuqGameProject/1' || !Array.isArray(data.entities)) throw new Error('Unsupported project file');
       this.scene.entities.splice(0);
       for (const saved of data.entities) {
         if (!saved || typeof saved.name !== 'string') continue;
@@ -253,6 +310,7 @@ export class Editor {
         this.scene.add(entity);
       }
       this.scene.name = data.scene || 'Main Scene';
+      if (Array.isArray(data.nodes3d)) this.threeD?.loadNodes(data.nodes3d);
       if (typeof data.code === 'string') this.editor?.setValue(data.code);
       this.select(this.scene.entities[0]);
       this.setStatus('Project loaded: ' + file.name);
