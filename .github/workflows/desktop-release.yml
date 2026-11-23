@@ -2,28 +2,40 @@ name: Desktop packages
 on:
   workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/desktop-release.yml'
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            artifact: windows-exe
+            bundle: nsis
+            artifact: luqgameengine-windows
           - os: macos-latest
-            artifact: macos-dmg
+            bundle: dmg
+            artifact: luqgameengine-macos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+        with:
+          node-version: 22
+          cache: npm
       - uses: dtolnay/rust-toolchain@stable
-      - run: npm install
-      - run: npm run tauri:build
-      - uses: actions/upload-artifact@v4
+      - name: Install dependencies
+        run: npm install
+      - name: Build desktop app
+        run: npm run tauri:build -- --bundles ${{ matrix.bundle }}
+      - name: Upload desktop package
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/dmg/*.dmg
-          if-no-files-found: warn
+          path: src-tauri/target/release/bundle/**
+          if-no-files-found: error
