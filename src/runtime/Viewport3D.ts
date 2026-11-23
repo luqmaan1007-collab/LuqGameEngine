@@ -17,7 +17,7 @@ export class Viewport3D {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly controls: OrbitControls;
   private readonly content = new THREE.Group();
-  private readonly meshes = new Map<string, THREE.Object3D>();
+  private readonly meshes = new Map<string, THREE.Mesh>();
   private frame = 0;
   private readonly resizeObserver: ResizeObserver;
 
