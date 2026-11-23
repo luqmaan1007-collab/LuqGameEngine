@@ -295,7 +295,7 @@ export class Editor {
         return;
       }
       if (data.format === 'LuqGameModel/1' && Array.isArray(data.parts)) {
-        this.threeD?.loadNodes(data.parts);
+        this.threeD?.loadNodes(data.parts.map(part => ({ ...part, kind: (part as Scene3DNode & { shape?: string }).shape ?? part.kind })));
         this.setMode('3d');
         this.setStatus('3D model imported: ' + file.name);
         return;
