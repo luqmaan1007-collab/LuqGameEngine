@@ -30,10 +30,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install dependencies
-        run: npm install
-      - name: Build desktop app
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Build desktop package
         run: npm run tauri:build -- --bundles ${{ matrix.bundle }}
       - name: Upload desktop package
         uses: actions/upload-artifact@v4
