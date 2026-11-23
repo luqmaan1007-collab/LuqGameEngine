@@ -119,15 +119,22 @@ export class Viewport3D {
   }
 
   listNodes(): Scene3DNode[] {
-    return [...this.meshes.values()].map(object => ({
-      id: String(object.userData.nodeId),
-      name: object.name,
-      kind: String(object.userData.kind),
-      position: { x: object.position.x, y: object.position.y, z: object.position.z },
-      scale: { x: object.scale.x, y: object.scale.y, z: object.scale.z },
-      color: object instanceof THREE.Mesh ? '#' + (object.material as THREE.MeshStandardMaterial).color.getHexString() : '#ffffff',
-      active: true
-    }));
+    return [...this.meshes.values()].map(object => {
+      const mesh = object instanceof THREE.Mesh ? object : undefined;
+      const position = mesh?.geometry.getAttribute('position');
+      const index = mesh?.geometry.getIndex();
+      const node: Scene3DNode = {
+        id: String(object.userData.nodeId),
+        name: object.name,
+        kind: String(object.userData.kind),
+        position: { x: object.position.x, y: object.position.y, z: object.position.z },
+        scale: { x: object.scale.x, y: object.scale.y, z: object.scale.z },
+        color: mesh ? '#' + (mesh.material as THREE.MeshStandardMaterial).color.getHexString() : '#ffffff',
+        active: true
+      };
+      if (node.kind === 'mesh' && position) node.geometry = { vertices: Array.from(position.array), indices: index ? Array.from(index.array) : undefined };
+      return node;
+    });
   }
 
   dispose(): void {
