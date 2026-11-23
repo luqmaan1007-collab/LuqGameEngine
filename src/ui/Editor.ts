@@ -24,6 +24,7 @@ export class Editor {
   private scene?: Scene;
   private engine?: Engine;
   private selected?: Entity;
+  private selected3D?: string;
   private playing = false;
 
   constructor(private readonly root: HTMLElement) {
@@ -108,7 +109,10 @@ export class Editor {
     });
   }
 
-  attach3D(viewport: Viewport3D): void { this.threeD = viewport; }
+  attach3D(viewport: Viewport3D): void {
+    this.threeD = viewport;
+    viewport.onSelection(node => this.select3D(node));
+  }
 
   private setMode(mode: '2d' | '3d'): void {
     this.viewportMode = mode;
@@ -119,13 +123,15 @@ export class Editor {
     this.root.querySelector('#mode-2d')?.classList.toggle('active-mode', mode === '2d');
     this.root.querySelector('#mode-3d')?.classList.toggle('active-mode', mode === '3d');
     this.setStatus(mode === '3d' ? '3D viewport · drag to orbit, scroll to zoom' : '2D viewport');
+    this.renderHierarchy();
     window.dispatchEvent(new Event('resize'));
   }
 
   private add3DPrimitive(): void {
     if (!this.threeD) return;
-    this.threeD.addPrimitive({ name: '3D Box', kind: 'box', position: { x: 0, y: 0.5, z: 0 }, scale: { x: 1, y: 1, z: 1 }, color: '#60a5fa' });
+    const id = this.threeD.addPrimitive({ name: '3D Box', kind: 'box', position: { x: 0, y: 0.5, z: 0 }, scale: { x: 1, y: 1, z: 1 }, color: '#60a5fa' });
     this.setMode('3d');
+    this.select3D(this.threeD.listNodes().find(node => node.id === id));
     this.setStatus('Added a 3D box');
   }
 
@@ -208,10 +214,72 @@ export class Editor {
       item.addEventListener('click', () => this.select(entity));
       tree.append(item);
     }
+    for (const node of this.threeD?.listNodes() ?? []) {
+      const item = document.createElement('button');
+      item.className = 'tree-item' + (node.id === this.selected3D ? ' selected' : '');
+      item.innerHTML = '<span class="tree-caret">›</span><span class="object-icon">◇</span><span></span><span class="tree-visible">3D</span>';
+      const label = item.querySelector('span:nth-child(3)');
+      if (label) label.textContent = node.name;
+      item.addEventListener('click', () => this.select3D(node));
+      tree.append(item);
+    }
+  }
+
+  private select3D(node?: Scene3DNode): void {
+    this.selected = undefined;
+    this.selected3D = node?.id;
+    this.renderHierarchy();
+    const panel = this.root.querySelector<HTMLElement>('#inspector-content');
+    if (!panel) return;
+    if (!node?.id) {
+      panel.innerHTML = '<div class="empty-inspector">Select a 2D or 3D object in the hierarchy or viewport.</div>';
+      return;
+    }
+    const position = node.position ?? {};
+    const scale = node.scale ?? {};
+    panel.innerHTML = '<label class="property-label">NAME<input id="prop3-name" value="' + this.escapeAttr(node.name) + '"></label>' +
+      '<div class="property-section">3D TRANSFORM</div>' +
+      this.numberField('Position X', 'prop3-x', position.x ?? 0) +
+      this.numberField('Position Y', 'prop3-y', position.y ?? 0) +
+      this.numberField('Position Z', 'prop3-z', position.z ?? 0) +
+      this.numberField('Scale X', 'prop3-sx', scale.x ?? 1) +
+      this.numberField('Scale Y', 'prop3-sy', scale.y ?? 1) +
+      this.numberField('Scale Z', 'prop3-sz', scale.z ?? 1) +
+      '<label class="property-label">COLOR<input id="prop3-color" type="color" value="' + (/^#[0-9a-fA-F]{6}$/.test(node.color ?? '') ? node.color : '#ffffff') + '"></label>' +
+      '<label class="toggle-row"><span>Active in scene</span><input id="prop3-active" type="checkbox" ' + (node.active !== false ? 'checked' : '') + '></label>' +
+      '<button class="danger-btn" id="delete3-object">Delete 3D object</button>';
+    panel.querySelector<HTMLInputElement>('#prop3-name')?.addEventListener('input', event => {
+      node.name = (event.target as HTMLInputElement).value || 'Object';
+      this.threeD?.updateNode(node.id!, { name: node.name });
+      this.renderHierarchy();
+    });
+    const bind = (id: string, axis: 'x'|'y'|'z', group: 'position'|'scale') => panel.querySelector<HTMLInputElement>('#' + id)?.addEventListener('input', event => {
+      const value = Number((event.target as HTMLInputElement).value);
+      if (!Number.isFinite(value)) return;
+      const current = node[group] ?? { x: group === 'scale' ? 1 : 0, y: group === 'scale' ? 1 : 0, z: group === 'scale' ? 1 : 0 };
+      node[group] = { ...current, [axis]: value };
+      this.threeD?.updateNode(node.id!, { [group]: node[group] });
+    });
+    bind('prop3-x','x','position'); bind('prop3-y','y','position'); bind('prop3-z','z','position');
+    bind('prop3-sx','x','scale'); bind('prop3-sy','y','scale'); bind('prop3-sz','z','scale');
+    panel.querySelector<HTMLInputElement>('#prop3-color')?.addEventListener('input', event => {
+      node.color = (event.target as HTMLInputElement).value;
+      this.threeD?.updateNode(node.id!, { color: node.color });
+    });
+    panel.querySelector<HTMLInputElement>('#prop3-active')?.addEventListener('change', event => {
+      node.active = (event.target as HTMLInputElement).checked;
+      this.threeD?.updateNode(node.id!, { active: node.active });
+    });
+    panel.querySelector('#delete3-object')?.addEventListener('click', () => {
+      this.threeD?.removeNode(node.id!);
+      this.select3D(undefined);
+      this.setStatus('3D object deleted');
+    });
   }
 
   private select(entity?: Entity): void {
     this.selected = entity;
+    this.selected3D = undefined;
     this.renderHierarchy();
     const panel = this.root.querySelector<HTMLElement>('#inspector-content');
     if (!panel) return;
@@ -283,6 +351,7 @@ export class Editor {
         if (data.dimension === '3d') {
           this.threeD?.loadNodes(data.nodes);
           this.setMode('3d');
+          this.renderHierarchy();
         } else {
           this.scene.entities.splice(0);
           for (const node of data.nodes) {
@@ -302,6 +371,7 @@ export class Editor {
       if (data.format === 'LuqGameModel/1' && Array.isArray(data.parts)) {
         this.threeD?.loadNodes(data.parts.map(part => ({ ...part, kind: (part as Scene3DNode & { shape?: string }).shape ?? part.kind })));
         this.setMode('3d');
+        this.renderHierarchy();
         this.setStatus('3D model imported: ' + file.name);
         return;
       }
