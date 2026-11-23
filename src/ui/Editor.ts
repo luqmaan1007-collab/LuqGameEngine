@@ -103,6 +103,11 @@ export class Editor {
     this.restoreLocalProject();
     this.select(scene.entities[0]);
     this.renderHierarchy();
+    this.playing = true;
+    const playButton = this.root.querySelector<HTMLButtonElement>('#play');
+    const runtimeState = this.root.querySelector<HTMLElement>('#runtime-state');
+    if (playButton) { playButton.textContent = '■ Stop'; playButton.classList.remove('primary-btn'); }
+    if (runtimeState) runtimeState.textContent = 'Preview running';
 
     let dragging: Entity | undefined;
     let offsetX = 0;
