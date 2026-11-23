@@ -39,7 +39,8 @@ Claude can use these tools to build levels, maps, models, gameplay scripts and p
 2. Install Node.js 22 or later.
 3. Run `npm ci` in the repository folder.
 4. Copy `claude/claude_desktop_config.example.json` into Claude Desktop's MCP configuration and replace the placeholder with the absolute path to `mcp/server.mjs`.
-5. Restart Claude Desktop and verify that the LuqGameEngine tools appear.
+5. Set `LUQGAMEENGINE_PROJECT` in the MCP entry to the absolute path of the game project you want Claude to edit.
+6. Restart Claude Desktop and verify that the LuqGameEngine tools appear.
 
 Example MCP configuration:
 
@@ -48,7 +49,8 @@ Example MCP configuration:
   "mcpServers": {
     "luqgameengine": {
       "command": "node",
-      "args": ["/absolute/path/to/LuqGameEngine/mcp/server.mjs"]
+      "args": ["/absolute/path/to/LuqGameEngine/mcp/server.mjs"],
+      "env": { "LUQGAMEENGINE_PROJECT": "/absolute/path/to/your/game-project" }
     }
   }
 }
