@@ -1,5 +1,6 @@
 import type { Scene } from './Scene';
 import { Transform } from './components/Transform';
+import { Visual } from './components/Visual';
 
 export class Engine {
   private scene?: Scene;
@@ -65,10 +66,18 @@ export class Engine {
       if (!entity.active) continue;
       const t = entity.get<Transform>('Transform');
       if (!t) continue;
-      ctx.fillStyle = entity.name === 'Floor' ? '#64748b' : '#60a5fa';
-      ctx.fillRect(t.x, t.y, t.width, t.height);
+      const visual = entity.get<Visual>('Visual');
+      ctx.fillStyle = visual?.color ?? (entity.name === 'Floor' ? '#64748b' : '#60a5fa');
       ctx.strokeStyle = '#dbeafe';
-      ctx.strokeRect(t.x, t.y, t.width, t.height);
+      if (visual?.shape === 'circle') {
+        ctx.beginPath();
+        ctx.ellipse(t.x + t.width / 2, t.y + t.height / 2, Math.abs(t.width / 2), Math.abs(t.height / 2), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(t.x, t.y, t.width, t.height);
+        ctx.strokeRect(t.x, t.y, t.width, t.height);
+      }
     }
   }
 }
