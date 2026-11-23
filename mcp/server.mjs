@@ -30,7 +30,7 @@ const tools = [
   tool('scene_add_object', 'Add a primitive, sprite, light or camera node to an existing LuqGame scene document.', {
     scene: string('Scene filename, for example island.scene.json'),
     name: string('Object name'),
-    kind: enumString('Object type', ['box','sphere','cylinder','plane','sprite','rect2d','circle2d','point-light','directional-light','camera']),
+    kind: enumString('Object type', ['box','sphere','cylinder','cone','torus','capsule','ring','plane','sprite','rect2d','circle2d','point-light','directional-light','camera']),
     x: number('Position X'), y: number('Position Y'), z: number('Position Z'),
     scaleX: number('Scale X'), scaleY: number('Scale Y'), scaleZ: number('Scale Z'),
     color: string('Hex color, e.g. #55aa88')
@@ -47,7 +47,7 @@ const tools = [
     name: string('Model name'),
     parts: { type: 'array', minItems: 1, maxItems: 80, items: { type: 'object', properties: {
       name: string('Part name'),
-      shape: enumString('Primitive or custom mesh shape', ['box','sphere','cylinder','plane','mesh']),
+      shape: enumString('Primitive or custom mesh shape', ['box','sphere','cylinder','cone','torus','capsule','ring','plane','mesh']),
       x: number('Position X'), y: number('Position Y'), z: number('Position Z'),
       sx: number('Scale X'), sy: number('Scale Y'), sz: number('Scale Z'),
       color: string('Hex material color'),
