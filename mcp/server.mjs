@@ -6,7 +6,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const WORKSPACE = path.join(ROOT, 'ai-workspace');
 const server = new Server(
   { name: 'luqgameengine-ai-studio', version: '0.3.0' },
   { capabilities: { tools: {} } }
@@ -35,7 +34,7 @@ const tools = [
     scaleX: number('Scale X'), scaleY: number('Scale Y'), scaleZ: number('Scale Z'),
     color: string('Hex color, e.g. #55aa88')
   }, ['scene','name','kind']),
-  tool('scene_generate_map', 'Generate a deterministic tile-based 3D terrain map scene. Dimensions are capped to protect project size.', {
+  tool('scene_generate_map', 'Generate a deterministic tile-based 2D map or 3D terrain scene. Dimensions are capped to protect project size.', {
     name: string('Map and scene name'),
     width: number('Map width in tiles', { minimum: 1, maximum: 48 }),
     depth: number('Map depth in tiles', { minimum: 1, maximum: 48 }),
@@ -83,7 +82,7 @@ function resolveWrite(input) {
   const allowed = ['src/', 'roblox/src/', 'ai-workspace/'];
   if (!allowed.some(prefix => target.relative.startsWith(prefix))) throw new Error('Writes are limited to src/, roblox/src/ and ai-workspace/');
   const ext = path.extname(target.relative).toLowerCase();
-  const extensions = new Set(['.ts','.tsx','.js','.mjs','.cjs','.lua','.luau','.json','.md','.css','.html','.glsl','.vert','.frag','.svg','.obj','.mtl','.scene']);
+  const extensions = new Set(['.ts','.tsx','.js','.jsx','.mjs','.cjs','.lua','.luau','.py','.rs','.cs','.sh','.json','.md','.css','.html','.glsl','.vert','.frag','.svg','.obj','.mtl','.scene','.toml','.yaml','.yml']);
   if (!extensions.has(ext) && !target.relative.endsWith('.scene.json') && !target.relative.endsWith('.model.json')) throw new Error('File extension is not allowed for AI workspace writes');
   return target;
 }
