@@ -28,6 +28,8 @@ Claude should explain significant changes and ask before broad destructive edits
 
 ## Scene and model files
 
+Set `LUQGAMEENGINE_PROJECT` to the project root (the folder containing `src/`, `roblox/`, and `ai-workspace/`). The server defaults to its own repository root if this variable is omitted.
+
 Claude-generated scenes use `LuqGameScene/1`; procedural models use `LuqGameModel/1`. Files are saved under `ai-workspace/scenes/` and `ai-workspace/models/`. Import a generated scene or model JSON with the editor's **Open** action.
 
 The editor provides a 2D canvas and an interactive Three.js 3D viewport with orbit/zoom controls, a 3D hierarchy and object inspector. The current mesh generator supports primitive assemblies and custom triangle meshes.
