@@ -46,10 +46,12 @@ const tools = [
     name: string('Model name'),
     parts: { type: 'array', minItems: 1, maxItems: 80, items: { type: 'object', properties: {
       name: string('Part name'),
-      shape: enumString('Primitive mesh shape', ['box','sphere','cylinder','plane']),
+      shape: enumString('Primitive or custom mesh shape', ['box','sphere','cylinder','plane','mesh']),
       x: number('Position X'), y: number('Position Y'), z: number('Position Z'),
       sx: number('Scale X'), sy: number('Scale Y'), sz: number('Scale Z'),
-      color: string('Hex material color')
+      color: string('Hex material color'),
+      vertices: { type: 'array', maxItems: 90000, items: { type: 'number' } },
+      indices: { type: 'array', maxItems: 180000, items: { type: 'integer', minimum: 0 } }
     }, required: ['name','shape'], additionalProperties: false } }
   }, ['name','parts']),
   tool('script_create', 'Create a Luau, TypeScript, JavaScript, or other text script under ai-workspace/scripts.', {
@@ -177,11 +179,17 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       case 'model_create': {
         const name = String(args.name ?? '').trim();
         if (!name || !Array.isArray(args.parts) || args.parts.length < 1 || args.parts.length > 80) throw new Error('Model requires a name and 1–80 primitive parts');
-        const allowedShapes = new Set(['box','sphere','cylinder','plane']);
+        const allowedShapes = new Set(['box','sphere','cylinder','plane','mesh']);
         const parts = args.parts.map((part, index) => {
           if (!part || !allowedShapes.has(part.shape) || typeof part.name !== 'string') throw new Error('Each model part needs a name and supported primitive shape');
           const num = value => Number.isFinite(Number(value)) ? Number(value) : 1;
-          return { id: crypto.randomUUID(), name: part.name, shape: part.shape, position: { x:num(part.x ?? 0), y:num(part.y ?? 0), z:num(part.z ?? 0) }, scale: { x:num(part.sx ?? 1), y:num(part.sy ?? 1), z:num(part.sz ?? 1) }, color: /^#[0-9a-fA-F]{6}$/.test(part.color ?? '') ? part.color : '#8ab4f8' };
+          let geometry;
+          if (part.shape === 'mesh') {
+            if (!Array.isArray(part.vertices) || part.vertices.length < 9 || part.vertices.length % 3 !== 0 || part.vertices.length > 90000) throw new Error('Custom mesh vertices must contain 3–90000 numeric values in XYZ triples');
+            if (part.indices !== undefined && (!Array.isArray(part.indices) || part.indices.length < 3 || part.indices.length > 180000 || part.indices.some(index => !Number.isInteger(index) || index < 0 || index >= part.vertices.length / 3))) throw new Error('Custom mesh indices must reference valid vertex positions');
+            geometry = { vertices: part.vertices.map(Number), indices: part.indices };
+          }
+          return { id: crypto.randomUUID(), name: part.name, shape: part.shape, position: { x:num(part.x ?? 0), y:num(part.y ?? 0), z:num(part.z ?? 0) }, scale: { x:num(part.sx ?? 1), y:num(part.sy ?? 1), z:num(part.sz ?? 1) }, color: /^#[0-9a-fA-F]{6}$/.test(part.color ?? '') ? part.color : '#8ab4f8', ...(geometry ? { geometry } : {}) };
         });
         const filename = slug(name) + '.model.json';
         const file = resolveWrite('ai-workspace/models/' + filename);
