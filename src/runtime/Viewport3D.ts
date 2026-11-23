@@ -100,6 +100,7 @@ export class Viewport3D {
     object.name = node.name;
     object.position.set(p.x ?? 0, p.y ?? 0.5, p.z ?? 0);
     if (!(object instanceof THREE.Camera)) object.scale.set(s.x ?? 1, s.y ?? 1, s.z ?? 1);
+    object.visible = node.active !== false;
     const id = node.id ?? crypto.randomUUID();
     object.userData.nodeId = id;
     object.userData.kind = node.kind;
@@ -116,7 +117,7 @@ export class Viewport3D {
     if (!rect.width || !rect.height) return;
     this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster.intersectObjects([...this.meshes.values()], true)[0]?.object;
+    const hit = this.raycaster.intersectObjects([...this.meshes.values()].filter(object => object.visible), true)[0]?.object;
     let current: THREE.Object3D | null = hit ?? null;
     while (current && current.userData.nodeId === undefined) current = current.parent;
     const id = current?.userData.nodeId;
@@ -149,10 +150,7 @@ export class Viewport3D {
 
   loadNodes(nodes: Scene3DNode[]): void {
     this.clear();
-    for (const node of nodes.slice(0, 3000)) {
-      if (node.active === false) continue;
-      this.addPrimitive(node);
-    }
+    for (const node of nodes.slice(0, 3000)) this.addPrimitive(node);
     this.controls.target.set(0, 0, 0);
   }
 
@@ -182,8 +180,8 @@ export class Viewport3D {
         kind: String(object.userData.kind),
         position: { x: object.position.x, y: object.position.y, z: object.position.z },
         scale: { x: object.scale.x, y: object.scale.y, z: object.scale.z },
-        color: mesh ? '#' + (mesh.material as THREE.MeshStandardMaterial).color.getHexString() : '#ffffff',
-        active: true
+        color: mesh ? '#' + (mesh.material as THREE.MeshStandardMaterial).color.getHexString() : object instanceof THREE.Light ? '#' + object.color.getHexString() : '#ffffff',
+        active: object.visible
       };
       if (node.kind === 'mesh' && position) node.geometry = { vertices: Array.from(position.array), indices: index ? Array.from(index.array) : undefined };
       return node;
@@ -203,11 +201,13 @@ export class Viewport3D {
   }
 
   private customGeometry(data: { vertices: number[]; indices?: number[] }): THREE.BufferGeometry | undefined {
-    if (!Array.isArray(data.vertices) || data.vertices.length < 9 || data.vertices.length % 3 !== 0 || data.vertices.length > 90000) return undefined;
+    if (!Array.isArray(data.vertices) || data.vertices.length < 9 || data.vertices.length % 3 !== 0 || data.vertices.length > 90000 || !data.vertices.every(Number.isFinite)) return undefined;
+    if (data.indices && (!Array.isArray(data.indices) || data.indices.length < 3 || data.indices.length > 180000 || data.indices.some(value => !Number.isInteger(value) || value < 0 || value >= data.vertices.length / 3))) return undefined;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(data.vertices, 3));
-    if (Array.isArray(data.indices) && data.indices.length >= 3 && data.indices.length <= 180000) geometry.setIndex(data.indices);
+    if (data.indices) geometry.setIndex(data.indices);
     geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
     return geometry;
   }
 
@@ -216,9 +216,14 @@ export class Viewport3D {
       case 'box': return new THREE.BoxGeometry(1, 1, 1);
       case 'sphere': return new THREE.SphereGeometry(0.5, 24, 16);
       case 'cylinder': return new THREE.CylinderGeometry(0.5, 0.5, 1, 24);
+      case 'cone': return new THREE.ConeGeometry(0.5, 1, 24);
+      case 'torus': return new THREE.TorusGeometry(0.5, 0.16, 12, 32);
+      case 'capsule': return new THREE.CapsuleGeometry(0.35, 0.7, 6, 12);
+      case 'ring': return new THREE.RingGeometry(0.25, 0.5, 32);
       case 'plane': return new THREE.BoxGeometry(1, 0.05, 1);
       case 'sprite':
       case 'rect2d': return new THREE.PlaneGeometry(1, 1);
+      case 'circle2d': return new THREE.CircleGeometry(0.5, 32);
       default: return undefined;
     }
   }
