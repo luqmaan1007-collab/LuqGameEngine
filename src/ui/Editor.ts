@@ -20,6 +20,7 @@ export class Editor {
   private viewportMode: '2d' | '3d' = '2d';
   private status!: HTMLElement;
   private editor?: monaco.editor.IStandaloneCodeEditor;
+  private fallbackCode?: HTMLTextAreaElement;
   private readonly plugins = new PluginManager();
   private scene?: Scene;
   private engine?: Engine;
@@ -64,11 +65,26 @@ export class Editor {
         monaco.languages.register({ id: language.monacoId });
       }
     }
-    this.editor = monaco.editor.create(code, {
-      value: starterCode, language: 'luau', theme: 'vs-dark', automaticLayout: true,
-      minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
-      wordWrap: 'on', padding: { top: 12 }, lineNumbersMinChars: 3
-    });
+    try {
+      this.editor = monaco.editor.create(code, {
+        value: starterCode, language: 'luau', theme: 'vs-dark', automaticLayout: true,
+        minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
+        wordWrap: 'on', padding: { top: 12 }, lineNumbersMinChars: 3
+      });
+    } catch (error) {
+      // Some Android WebViews block Monaco's worker bootstrap. Keep the IDE
+      // usable with a native editor instead of aborting the whole application.
+      console.error('Monaco unavailable; using the built-in code editor.', error);
+      const textarea = document.createElement('textarea');
+      textarea.id = 'code-fallback';
+      textarea.className = 'code-fallback';
+      textarea.value = starterCode;
+      textarea.spellcheck = false;
+      textarea.setAttribute('aria-label', 'Game script editor');
+      code.replaceChildren(textarea);
+      this.fallbackCode = textarea;
+      this.setStatus('Basic script editor active · advanced code features unavailable');
+    }
     languageSelect.value = 'luau';
     languageSelect.addEventListener('change', () => {
       const selected = languages.find(item => item.id === languageSelect.value);
@@ -333,7 +349,7 @@ export class Editor {
 
   private saveProject(): void {
     try {
-      localStorage.setItem('luqgameengine.project', JSON.stringify({ ...this.snapshot(), code: this.editor?.getValue() ?? '' }));
+      localStorage.setItem('luqgameengine.project', JSON.stringify({ ...this.snapshot(), code: this.editor?.getValue() ?? this.fallbackCode?.value ?? '' }));
       this.setStatus('Project saved on this device');
     } catch { this.setStatus('Could not save project in local storage'); }
   }
