@@ -5,9 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0b1020">
   <title>LuqGameEngine</title>
+  <style>
+    html,body,#app{margin:0;width:100%;height:100%;min-height:100%;background:#090e19;color:#e6edf8;font-family:system-ui,sans-serif}
+    .boot-state{min-height:100%;display:grid;place-content:center;text-align:center;padding:24px;box-sizing:border-box}
+    .boot-state p{color:#a8b8d0;max-width:32rem;line-height:1.5}
+    .boot-error{white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;background:#151d2b;border:1px solid #7c4350;border-radius:8px;padding:12px;font:12px/1.5 monospace;max-height:45vh;overflow:auto}
+  </style>
 </head>
 <body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.ts"></script>
+  <div id="app"><div class="boot-state"><strong>LuqGameEngine</strong><p id="boot-message">Starting editor…</p></div></div>
+  <script>
+    (() => {
+      const showError = (label, detail) => {
+        const root = document.getElementById('app');
+        if (!root) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'boot-state';
+        const title = document.createElement('strong');
+        title.textContent = 'LuqGameEngine could not start';
+        const message = document.createElement('p');
+        message.textContent = label;
+        const error = document.createElement('pre');
+        error.className = 'boot-error';
+        error.textContent = String(detail || 'No additional error details were provided.');
+        wrap.replaceChildren(title, message, error);
+        root.replaceChildren(wrap);
+      };
+      window.addEventListener('error', event => {
+        showError('A startup script failed to load or execute.', event.message || event.error || event.target?.src || 'Unknown script error');
+      }, true);
+      window.addEventListener('unhandledrejection', event => {
+        showError('The app rejected a startup operation.', event.reason?.stack || event.reason || 'Unknown promise error');
+      });
+      window.setTimeout(() => {
+        const message = document.getElementById('boot-message');
+        if (message && message.isConnected) {
+          message.textContent = 'Startup is taking too long. Check the error details or send a screenshot to support.';
+        }
+      }, 12000);
+    })();
+  </script>
+  <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
