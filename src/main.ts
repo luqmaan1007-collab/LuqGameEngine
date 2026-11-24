@@ -12,9 +12,18 @@ const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('Missing application root');
 
 const editor = new Editor(root);
-const viewport3d = new Viewport3D(editor.canvas3d);
-editor.attach3D(viewport3d);
-viewport3d.addPrimitive({ name: 'Starter Cube', kind: 'box', position: { x: 0, y: 0.5, z: 0 }, scale: { x: 1, y: 1, z: 1 }, color: '#60a5fa' });
+
+// WebGL is optional: devices with restricted WebGL still get the complete 2D
+// editor rather than aborting startup on a failed WebGL context.
+let viewport3d: Viewport3D | undefined;
+try {
+  viewport3d = new Viewport3D(editor.canvas3d);
+  editor.attach3D(viewport3d);
+  viewport3d.addPrimitive({ name: 'Starter Cube', kind: 'box', position: { x: 0, y: 0.5, z: 0 }, scale: { x: 1, y: 1, z: 1 }, color: '#60a5fa' });
+} catch (error) {
+  console.error('3D viewport unavailable; continuing in 2D mode.', error);
+  editor.setStatus('3D unavailable on this device · 2D editor ready');
+}
 const scene = new Scene('Main Scene');
 const player = new Entity('Player');
 player.add(new Transform(110, 110, 48, 48));
